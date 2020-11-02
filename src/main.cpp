@@ -16,11 +16,29 @@
 */
 
 #include <iostream>
+#include <string>
 #include <sys/epoll.h>
 
 #include <libudev.h>
 
-bool listen_for_events(){
+struct ldms_config{
+    std::string command = "shutdown now";
+    std::string lock_path = "/var/lib/ldms/armed.lck";
+    bool action_add  = true;
+    bool action_bind = true;
+    bool action_remove = true;
+    bool action_change = false;
+    bool action_unbing = false;
+
+} config;
+
+bool load_config(){
+
+
+    return true;
+}
+
+int listen_for_events(){
     udev* context = udev_new();
     udev_monitor* kernel_monitor = nullptr;
     udev_device* device;
@@ -75,12 +93,19 @@ bool listen_for_events(){
         }
     }
 
-    return true;
+    return 0;
 }
 
 int main(int argc, char** argv){
+    int return_status = 0;
 
-    listen_for_events();
+    // Load config
+    if(!load_config()){
+        std::cerr << "failed to config" << std::endl;
+    }
 
-    return 0;
+    // Main loop
+    return_status = listen_for_events();
+
+    return return_status;
 }
