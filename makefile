@@ -1,24 +1,21 @@
-EXECUTABLE=ldms
+LDMS_EXECUTABLE=ldms
+SWITCH_EXECUTABLE=switch
 BUILDDIR=
 OBJDIR=obj
 
 CC=g++
 SRCDIR=src
-SRC:= $(shell find $(SRCDIR)/ -name '*.cpp')
-OBJ=$(addprefix $(OBJDIR)/, $(subst $(SRCDIR)/, ,$(SRC:.cpp=.o)))
+LDMS_SRC=$(SRCDIR)/ldms.cpp
+SWITCH_SRC=$(SRCDIR)/switch_ldms.cpp
 IDIR=include
 LIBS=-I$(IDIR) -ludev
 
-CFLAGS=-Wall -MP -MMD
+CFLAGS=-Wall
 
-$(BUILDDIR)$(EXECUTABLE): $(OBJ)
-	$(CC) $(OBJ) -o $@ $(CFLAGS) $(LIBS)
+all: ldms
 
--include $(OBJ:.o=.d)
-
-$(OBJDIR)/%.o: $(SRCDIR)/%.cpp
-	mkdir -p $(dir $@)
-	$(CC) -c $< -o $@ $(CFLAGS) $(LIBS)
+$(LDMS_EXECUTABLE):	$(LDMS_SRC)
+	$(CC) $(CFLAGS) $(LIBS) $< -o $@
 
 debug: CFLAGS += -g
-debug: $(BUILDDIR)$(EXECUTABLE)
+debug: all
