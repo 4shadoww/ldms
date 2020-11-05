@@ -20,117 +20,11 @@
 #include <string.h>
 #include <sys/epoll.h>
 #include <sys/stat.h>
-#include <fstream>
-#include <vector>
-#include <algorithm>
-#include <sstream>
 
 #include <libudev.h>
 
-struct ldms_config{
-    std::string command = "echo \"dead man's switch triggered\"";
-    std::string lock_path = "/var/lib/ldms/armed.lck";
-    bool action_add  = false;
-    bool action_bind = false;
-    bool action_remove = false;
-    bool action_change = false;
-    bool action_unbind = false;
+#include "config_loader.hpp"
 
-} config;
-
-static inline void ltrim(std::string& s) {
-    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
-        return !std::isspace(ch);
-    }));
-}
-
-static inline void rtrim(std::string& s) {
-    s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) {
-        return !std::isspace(ch);
-    }).base(), s.end());
-}
-
-static inline void trim(std::string &s) {
-    ltrim(s);
-    rtrim(s);
-}
-
-std::vector<std::string> split_string(std::string str, char delimiter){
-    std::vector<std::string> internal;
-    std::stringstream ss(str);
-    std::string tok;
-
-    while(getline(ss, tok, delimiter)) {
-        trim(tok);
-        internal.push_back(tok);
-    }
-
-    return internal;
-}
-
-bool parse_triggers(std::vector<std::string>& triggers){
-    for(std::vector<std::string>::iterator it = triggers.begin(); it != triggers.end(); it++){
-        if(*it == "add"){
-            config.action_add = true;
-        }else if(*it == "bind"){
-            config.action_bind = true;
-        }else if(*it == "remove"){
-            config.action_remove = true;
-        }else if(*it == "change"){
-            config.action_change = true;
-        }else if(*it == "unbind"){
-            config.action_unbind = true;
-        }else{
-            std::cerr << "error: unknown trigger \"" << *it << "\"" << std::endl;
-            return false;
-        }
-    }
-
-    return true;
-}
-
-bool load_config(std::string& location){
-    std::ifstream reader;
-    std::string line;
-    std::string key;
-    std::vector<std::string> values;
-    std::vector<std::string> triggers;
-
-    reader.open(location);
-    if(!reader.is_open()){
-        std::cerr << "error: config file \"" << location << "\" not found" << std::endl;
-        return false;
-    }
-
-    // Parse config
-    while(getline(reader, line)){
-        values = split_string(line, '=');
-        if(values.size() == 1 && values.at(0).empty()) continue;
-        if(values.size() > 2){
-            std::cerr << "config parsing error: multiple \"=\" in line" << std::endl;
-            return false;
-        }
-        // TODO: Could be done in a loop
-        if(values.at(0) == "command"){
-            config.command = values.at(1);
-            continue;
-        }else if(values.at(0) == "lock_path"){
-            config.lock_path = values.at(1);
-            continue;
-        }else if(values.at(0) == "triggers"){
-            // Do more parsing
-            triggers = split_string(values.at(1), ' ');
-            if(!parse_triggers(triggers)) return false;
-        }else{
-            std::cerr << "error: invalid option \"" << values.at(0) << "\"" << std::endl;
-            return false;
-        }
-    }
-
-    reader.close();
-
-    return true;
-}
 
 bool trigger_dms(const char* action){
     if(strcmp(action, "add") == 0 && config.action_add) return true;
@@ -146,7 +40,6 @@ inline bool switch_armed(std::string& location){
     struct stat buffer;
     return (stat(location.c_str(), &buffer) == 0);
 }
-
 
 int listen_for_events(){
     udev* context = udev_new();
@@ -217,8 +110,8 @@ void print_version(){
     std::cout << "ldms 1.0" << std::endl;
 }
 
-void print_usage(){
-    std::cout << "Usage: [options]\n\nOptions:\n-h, --help\t\tshow help\n-v, --version\t\tshow version\n-c, --config\t\tconfig file location" << std::endl;
+void print_usage(char* arg0){
+    std::cout << "Usage: " << arg0 << " [options]\n\nOptions:\n-h, --help\t\tshow help\n-v, --version\t\tshow version\n-c, --config\t\tconfig file location" << std::endl;
 }
 
 int main(int argc, char** argv){
@@ -228,7 +121,7 @@ int main(int argc, char** argv){
     // Parse arguments
     if(argc >= 2){
         if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0){
-            print_usage();
+            print_usage(argv[0]);
             return 0;
         }else if(strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-v") == 0){
             print_version();
