@@ -28,13 +28,13 @@
 #include <libudev.h>
 
 struct ldms_config{
-    std::string command = "shutdown now";
+    std::string command = "echo \"dead man's switch triggered\"";
     std::string lock_path = "/var/lib/ldms/armed.lck";
-    bool action_add  = true;
-    bool action_bind = true;
-    bool action_remove = true;
+    bool action_add  = false;
+    bool action_bind = false;
+    bool action_remove = false;
     bool action_change = false;
-    bool action_unbing = false;
+    bool action_unbind = false;
 
 } config;
 
@@ -68,6 +68,27 @@ std::vector<std::string> split_string(std::string str, char delimiter){
     return internal;
 }
 
+bool parse_triggers(std::vector<std::string>& triggers){
+    for(std::vector<std::string>::iterator it = triggers.begin(); it != triggers.end(); it++){
+        if(*it == "add"){
+            config.action_add = true;
+        }else if(*it == "bind"){
+            config.action_bind = true;
+        }else if(*it == "remove"){
+            config.action_remove = true;
+        }else if(*it == "change"){
+            config.action_change = true;
+        }else if(*it == "unbind"){
+            config.action_unbind = true;
+        }else{
+            std::cerr << "error: unknown trigger \"" << *it << "\"" << std::endl;
+            return false;
+        }
+    }
+
+    return true;
+}
+
 bool load_config(std::string& location){
     std::ifstream reader;
     std::string line;
@@ -99,9 +120,7 @@ bool load_config(std::string& location){
         }else if(values.at(0) == "triggers"){
             // Do more parsing
             triggers = split_string(values.at(1), ' ');
-            for(std::vector<std::string>::iterator it = triggers.begin(); it != triggers.end(); it++){
-                std::cout << *it << std::endl;
-            }
+            if(!parse_triggers(triggers)) return false;
         }else{
             std::cerr << "error: invalid option \"" << values.at(0) << "\"" << std::endl;
             return false;
@@ -111,6 +130,16 @@ bool load_config(std::string& location){
     reader.close();
 
     return true;
+}
+
+bool trigger_dms(const char* action){
+    if(strcmp(action, "add") == 0 && config.action_add) return true;
+    else if(strcmp(action, "bind") == 0 && config.action_bind) return true;
+    else if(strcmp(action, "remove") == 0 && config.action_remove) return true;
+    else if(strcmp(action, "change") == 0 && config.action_change) return true;
+    else if(strcmp(action, "unbind") == 0 && config.action_unbind) return true;
+
+    return false;
 }
 
 inline bool switch_armed(std::string& location){
@@ -172,8 +201,9 @@ int listen_for_events(){
             if(device == nullptr) continue;
 
             // Check is switch armed and are the requirements met
-            if(switch_armed(config.lock_path)){
-                std::cout << udev_device_get_action(device) << std::endl;
+            if(switch_armed(config.lock_path) && trigger_dms(udev_device_get_action(device))){
+                // Run the command on shell
+                std::system(config.command.c_str());
             }
 
             udev_device_unref(device);
@@ -218,7 +248,6 @@ int main(int argc, char** argv){
         return 1;
     }
 
-    return 0;
     // Main loop
     return_status = listen_for_events();
 
