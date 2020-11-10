@@ -19,12 +19,54 @@
 #include <string>
 #include <string.h>
 #include <sys/epoll.h>
+#include <linux/netlink.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include <sys/stat.h>
-
-#include <libudev.h>
 
 #include "config_loader.hpp"
 
+#define SOCK_BUFFER_SIZE 8192
+
+struct device_event{
+    char* action = nullptr;
+    char* device = nullptr;
+
+    ~device_event(){
+        if(this->action != nullptr) delete[] action;
+        if(this->device != nullptr) delete[] device;
+    }
+};
+
+device_event* parse_uevent(char* msg){
+    device_event* d_event = new device_event;
+    int action_end = -1;
+    int end = -1;
+
+    // Parse message
+    for(unsigned int i = 0; i < SOCK_BUFFER_SIZE; i++){
+        if(msg[i] == '\0'){
+            end = i;
+            break;
+        }else if(msg[i] == '@'){
+            action_end = i;
+            continue;
+        }
+    }
+
+    // Allocate memory and copy parsed data to struct
+    if(action_end > 0 && end > 0){
+        d_event->action = new char[action_end + 1];
+        d_event->device = new char[end - action_end];
+        strncpy(d_event->action, msg, action_end);
+        d_event->action[action_end] = '\0';
+        strncpy(d_event->device, &msg[action_end + 1], end - action_end - 1);
+        d_event->device[end - action_end - 1] = '\0';
+    }
+
+    return d_event;
+}
 
 bool trigger_dms(const char* action){
     if(strcmp(action, "add") == 0 && config.action_add) return true;
@@ -42,24 +84,33 @@ inline bool switch_armed(std::string& location){
 }
 
 int listen_for_events(){
-    udev* context = udev_new();
-    udev_monitor* kernel_monitor = nullptr;
-    udev_device* device;
     epoll_event ep_kernel;
     int fd_ep = -1;
-    int fd_kernel = -1;
+    int nl_socket = -1;
+    struct sockaddr_nl src_addr;
+    char buffer[SOCK_BUFFER_SIZE];
+    int ret;
+    device_event* d_event;
 
-    // Set up monitor and get kernel socket to monitor
-    if(context == nullptr){
-        std::cerr << "error: couldn't create udev context" << std::endl;
-    }
-    kernel_monitor = udev_monitor_new_from_netlink(context, "kernel");
-    if(kernel_monitor == nullptr){
-        std::cerr << "error: couldn't create monitor" << std::endl;
-    }
-    udev_monitor_set_receive_buffer_size(kernel_monitor, 128*1024*1024);
+    // Prepare source address
+    memset(&src_addr, 0, sizeof(src_addr));
+    src_addr.nl_family = AF_NETLINK;
+    src_addr.nl_pid = getpid();
+    src_addr.nl_groups = -1;
 
-    udev_monitor_enable_receiving(kernel_monitor);
+    nl_socket = socket(AF_NETLINK, (SOCK_DGRAM | SOCK_CLOEXEC), NETLINK_KOBJECT_UEVENT);
+
+    if(nl_socket < 0){
+        std::cerr << "error: failed to open socket" << std::endl;
+        return 1;
+    }
+
+    ret = bind(nl_socket, (struct sockaddr*) &src_addr, sizeof(src_addr));
+    if(ret){
+        std::cerr << "error: failed to bind netlink socket" << std::endl;
+        close(nl_socket);
+        return 1;
+    }
 
     fd_ep = epoll_create1(EPOLL_CLOEXEC);
     if(fd_ep < 0){
@@ -67,13 +118,11 @@ int listen_for_events(){
         return 1;
     }
 
-    fd_kernel = udev_monitor_get_fd(kernel_monitor);
-
     ep_kernel.events = EPOLLIN;
-    ep_kernel.data.fd = fd_kernel;
+    ep_kernel.data.fd = nl_socket;
 
-    if (epoll_ctl(fd_ep, EPOLL_CTL_ADD, fd_kernel, &ep_kernel) < 0) {
-        std::cerr << "error: failed to add fd to epoll" << std::endl;
+    if (epoll_ctl(fd_ep, EPOLL_CTL_ADD, nl_socket, &ep_kernel) < 0) {
+        std::cerr << "error: failed to add socket to epoll" << std::endl;
         return 5;
     }
 
@@ -89,17 +138,25 @@ int listen_for_events(){
         }
         // Iterate events
         for(int i = 0; i < fdcount; i++){
-            device = udev_monitor_receive_device(kernel_monitor);
+            int read_status = read(ev[i].data.fd, buffer, SOCK_BUFFER_SIZE);
+            if(read_status < 0){
+                std::cerr << "error: failed to read socket ("  << std::endl;
+                continue;
+            }
+            d_event = parse_uevent(buffer);
 
-            if(device == nullptr) continue;
+            if(d_event->device == nullptr){
+                delete d_event;
+                continue;
+            }
 
             // Check is switch armed and are the requirements met
-            if(switch_armed(config.lock_path) && trigger_dms(udev_device_get_action(device))){
+            if(switch_armed(config.lock_path) && trigger_dms(d_event->action)){
                 // Run the command on shell
                 std::system(config.command.c_str());
             }
 
-            udev_device_unref(device);
+            delete d_event;
         }
     }
 

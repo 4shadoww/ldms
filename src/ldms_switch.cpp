@@ -17,19 +17,44 @@
 
 #include <iostream>
 #include <string.h>
+#include <cstdio>
+#include <fstream>
+#include <sys/stat.h>
 
 #include "config_loader.hpp"
 
-void print_config(){
+inline bool switch_armed(std::string& location){
+    struct stat buffer;
+    return (stat(location.c_str(), &buffer) == 0);
+}
 
+void print_config(){
+    std::cout << "command = " << config.command << std::endl;
+    std::cout << "lock path = " << config.lock_path << std::endl;
+    std::cout << "trigger add = " << config.action_add << std::endl;
+    std::cout << "trigger remove = " << config.action_remove << std::endl;
+    std::cout << "trigger change = " << config.action_change << std::endl;
+    std::cout << "trigger bind = " << config.action_bind << std::endl;
+    std::cout << "trigger unbind = " << config.action_unbind << std::endl;
 }
 
 bool disarm(){
+    std::remove(config.lock_path.c_str());
+    if(switch_armed(config.lock_path)){
+        std::cerr << "error: failed to disarm ldms" << std::endl;
+        return false;
+    }
 
     return true;
 }
 
 bool arm(){
+    std::ofstream lock(config.lock_path);
+    if(!lock.is_open()){
+        std::cerr << "error: couldn't create lock file to arm ldms" << std::endl;
+        return false;
+    }
+    lock.close();
 
     return true;
 }
@@ -44,6 +69,7 @@ void print_usage(char* argv0){
 
 int main(int argc, char** argv){
     std::string config_location = "/etc/ldms/ldms.conf";
+    int parameter1_pos = 1;
 
     // Parse arguments
     if(argc < 2){
@@ -59,7 +85,12 @@ int main(int argc, char** argv){
         if(argc < 3){
             std::cerr << "please give the config location" << std::endl;
             return 1;
+        }else if(argc < 4){
+            print_usage(argv[0]);
+            std::cerr << std::endl << "please give the parameter1" << std::endl;
+            return 1;
         }
+        parameter1_pos = 3;
         config_location = std::string(argv[2]);
     }
 
@@ -70,14 +101,16 @@ int main(int argc, char** argv){
     }
 
     // Parse action
-    if(strcmp(argv[1], "arm")){
+    if(strcmp(argv[parameter1_pos], "arm") == 0){
         if(!arm()){
             std::cerr << "error: could not arm ldms" << std::endl;
             return 1;
         }
+        print_config();
         std::cout << "ldms is now armed and command \"" << config.command << "\" will be ran upon triggering!!!" << std::endl;
+        std::cout << "also make sure ldms daemon is running!!!" << std::endl;
 
-    }else if(strcmp(argv[1], "disarm")){
+    }else if(strcmp(argv[parameter1_pos], "disarm") == 0){
         if(!disarm()){
             std::cerr << "error: could not disarm ldms" << std::endl;
             return 1;
