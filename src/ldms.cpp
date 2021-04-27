@@ -18,146 +18,40 @@
 #include <iostream>
 #include <string>
 #include <string.h>
-#include <sys/epoll.h>
-#include <linux/netlink.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <unistd.h>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
 #include <sys/stat.h>
 
 #include "config_loader.hpp"
-
-#define SOCK_BUFFER_SIZE 8192
-
-struct device_event{
-    char* action = nullptr;
-    char* device = nullptr;
-
-    ~device_event(){
-        if(this->action != nullptr) delete[] action;
-        if(this->device != nullptr) delete[] device;
-    }
-};
-
-device_event* parse_uevent(char* msg){
-    device_event* d_event = new device_event;
-    int action_end = -1;
-    int end = -1;
-
-    // Parse message
-    for(unsigned int i = 0; i < SOCK_BUFFER_SIZE; i++){
-        if(msg[i] == '\0'){
-            end = i;
-            break;
-        }else if(msg[i] == '@'){
-            action_end = i;
-            continue;
-        }
-    }
-
-    // Allocate memory and copy parsed data to struct
-    if(action_end > 0 && end > 0){
-        d_event->action = new char[action_end + 1];
-        d_event->device = new char[end - action_end];
-        strncpy(d_event->action, msg, action_end);
-        d_event->action[action_end] = '\0';
-        strncpy(d_event->device, &msg[action_end + 1], end - action_end - 1);
-        d_event->device[end - action_end - 1] = '\0';
-    }
-
-    return d_event;
-}
-
-bool trigger_dms(const char* action){
-    if(strcmp(action, "add") == 0 && config.action_add) return true;
-    else if(strcmp(action, "bind") == 0 && config.action_bind) return true;
-    else if(strcmp(action, "remove") == 0 && config.action_remove) return true;
-    else if(strcmp(action, "change") == 0 && config.action_change) return true;
-    else if(strcmp(action, "unbind") == 0 && config.action_unbind) return true;
-
-    return false;
-}
 
 inline bool switch_armed(std::string& location){
     struct stat buffer;
     return (stat(location.c_str(), &buffer) == 0);
 }
 
-int listen_for_events(){
-    epoll_event ep_kernel;
-    int fd_ep = -1;
-    int nl_socket = -1;
-    struct sockaddr_nl src_addr;
-    char buffer[SOCK_BUFFER_SIZE];
-    int ret;
-    device_event* d_event;
-
-    // Prepare source address
-    memset(&src_addr, 0, sizeof(src_addr));
-    src_addr.nl_family = AF_NETLINK;
-    src_addr.nl_pid = getpid();
-    src_addr.nl_groups = -1;
-
-    nl_socket = socket(AF_NETLINK, (SOCK_DGRAM | SOCK_CLOEXEC), NETLINK_KOBJECT_UEVENT);
-
-    if(nl_socket < 0){
-        std::cerr << "error: failed to open socket" << std::endl;
-        return 1;
+bool initialise_modules(std::mutex& mu, std::condition_variable& cond){
+    //std::thread* temp;
+    for(std::vector<std::pair<std::string, func_ptr>>::iterator it = config.modules.begin(); it != config.modules.end(); it++){
+        new std::thread(*(it->second), std::ref(mu), std::ref(cond));
     }
 
-    ret = bind(nl_socket, (struct sockaddr*) &src_addr, sizeof(src_addr));
-    if(ret){
-        std::cerr << "error: failed to bind netlink socket" << std::endl;
-        close(nl_socket);
-        return 1;
-    }
+    return true;
+}
 
-    fd_ep = epoll_create1(EPOLL_CLOEXEC);
-    if(fd_ep < 0){
-        std::cerr << "error: epoll_create1() failed" << std::endl;
-        return 1;
-    }
+int listen_for_events(std::mutex& mu, std::condition_variable& cond){
+    std::unique_lock<std::mutex> lock(mu);
 
-    ep_kernel.events = EPOLLIN;
-    ep_kernel.data.fd = nl_socket;
-
-    if (epoll_ctl(fd_ep, EPOLL_CTL_ADD, nl_socket, &ep_kernel) < 0) {
-        std::cerr << "error: failed to add socket to epoll" << std::endl;
-        return 5;
-    }
-
-    // Main loop
     while(true){
-        struct epoll_event ev[4];
-        int fdcount = epoll_wait(fd_ep, ev, 4, -1);
-
-        if (fdcount < 0) {
-            if (errno != EINTR)
-                std::cerr << "error while receiving uevent message" << std::endl;
-            continue;
+        cond.wait(lock, []{return triggered == true;});
+        std::cout << "pass" << std::endl;
+        // Check is switch armed
+        if(switch_armed(config.lock_path)){
+            // Run the command on shell
+            std::system(config.command.c_str());
+            break;
         }
-        // Iterate events
-        for(int i = 0; i < fdcount; i++){
-            int read_status = read(ev[i].data.fd, buffer, SOCK_BUFFER_SIZE);
-            if(read_status < 0){
-                std::cerr << "error: failed to read socket ("  << std::endl;
-                continue;
-            }
-            d_event = parse_uevent(buffer);
-
-            if(d_event->device == nullptr){
-                delete d_event;
-                continue;
-            }
-
-            // Check is switch armed and are the requirements met
-            if(switch_armed(config.lock_path) && trigger_dms(d_event->action)){
-                // Run the command on shell
-                std::system(config.command.c_str());
-            }
-
-            delete d_event;
-        }
+        triggered = false;
     }
 
     return 0;
@@ -198,8 +92,18 @@ int main(int argc, char** argv){
         return 1;
     }
 
+    if(config.modules.size() == 0){
+        std::cerr << "no modules defined" << std::endl;
+        return 1;
+    }
+
+    std::mutex mu;
+    std::condition_variable cond;
+
+    initialise_modules(mu, cond);
+
     // Main loop
-    return_status = listen_for_events();
+    return_status = listen_for_events(mu, cond);
 
     return return_status;
 }

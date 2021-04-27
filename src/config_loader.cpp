@@ -16,13 +16,14 @@
 */
 
 #include "config_loader.hpp"
-#include <vector>
 #include <fstream>
-#include <vector>
 #include <algorithm>
 #include <sstream>
 
+#include <modules/usb_events.hpp>
+
 ldms_config config;
+bool triggered = false;
 
 static inline void ltrim(std::string& s) {
     s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
@@ -75,12 +76,29 @@ bool parse_triggers(std::vector<std::string>& triggers){
     return true;
 }
 
+bool load_modules(std::vector<std::string>& modules){
+    for(std::vector<std::string>::iterator it = modules.begin(); it != modules.end(); it++){
+        if(*it == "usbevents"){
+            config.modules.push_back(std::pair<std::string, func_ptr>("usbevents", &run_usb_events));
+        }else if(*it == "lm-sensors"){
+            // Implement
+        }else{
+            std::cerr << "error: unknown module \"" << *it << "\"" << std::endl;
+            return false;
+        }
+    }
+
+
+    return true;
+}
+
 bool load_config(std::string& location){
     std::ifstream reader;
     std::string line;
     std::string key;
     std::vector<std::string> values;
     std::vector<std::string> triggers;
+    std::vector<std::string> modules;
 
     reader.open(location);
     if(!reader.is_open()){
@@ -107,6 +125,9 @@ bool load_config(std::string& location){
             // Do more parsing
             triggers = split_string(values.at(1), ' ');
             if(!parse_triggers(triggers)) return false;
+        }else if(values.at(0) == "modules"){
+            modules = split_string(values.at(1), ' ');
+            if(!load_modules(modules)) return false;
         }else{
             std::cerr << "error: invalid option \"" << values.at(0) << "\"" << std::endl;
             return false;

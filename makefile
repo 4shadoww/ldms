@@ -5,10 +5,11 @@ OBJDIR=obj
 
 CC=g++
 SRCDIR=src
-LDMS_SRC=$(SRCDIR)/ldms.cpp $(SRCDIR)/config_loader.cpp
-SWITCH_SRC=$(SRCDIR)/ldms_switch.cpp $(SRCDIR)/config_loader.cpp
+MODULES=$(SRCDIR)/modules/usb_events.cpp
+LDMS_SRC=$(SRCDIR)/ldms.cpp $(SRCDIR)/config_loader.cpp $(MODULES)
+SWITCH_SRC=$(SRCDIR)/ldms_switch.cpp $(SRCDIR)/config_loader.cpp $(MODULES)
 IDIR=include
-LIBS=-I$(IDIR) -ludev
+LIBS=-I$(IDIR) -pthread
 
 CFLAGS=-Wall
 

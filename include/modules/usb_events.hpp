@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2020 Noa-Emil Nissinen
+  Copyright (C) 2021 Noa-Emil Nissinen
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -15,32 +15,12 @@
   along with this program.    If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef CONFIG_LOADER_HPP
-#define CONFIG_LOADER_HPP
+#ifndef LDMS_UBS_EVENTS_HPP
+#define LDMS_USB_EVENTS_HPP
 
-#include <iostream>
-#include <string>
-#include <vector>
 #include <mutex>
 #include <condition_variable>
 
-typedef int (*func_ptr)(std::mutex&, std::condition_variable&);
-
-struct ldms_config{
-    std::string command = "echo \"dead man's switch triggered\"";
-    std::string lock_path = "/var/lib/ldms/armed.lck";
-    bool action_add  = false;
-    bool action_bind = false;
-    bool action_remove = false;
-    bool action_change = false;
-    bool action_unbind = false;
-    std::vector<std::pair<std::string, func_ptr>> modules;
-
-};
-
-extern ldms_config config;
-extern bool triggered;
-
-bool load_config(std::string& location);
+int run_usb_events(std::mutex& mu, std::condition_variable& cond);
 
 #endif

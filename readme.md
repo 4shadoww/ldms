@@ -9,6 +9,6 @@ ldms relies heavily on element of surprise and doesn't give fully protection but
 
 TODO
 ====
-* Implement screen detection
-* Network detection
-* Sensor based detection?
+* Implement screen detection (unpractical) (canceled)
+* Network detection linux kernel socket for events possibly available?
+* Sensor based detection? no events busy waiting
