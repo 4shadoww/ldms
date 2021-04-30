@@ -15,15 +15,14 @@
   along with this program.    If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "config_loader.hpp"
 #include <fstream>
 #include <algorithm>
 #include <sstream>
 
+#include "config_loader.hpp"
 #include <modules/usb_events.hpp>
 
 ldms_config config;
-bool triggered = false;
 
 static inline void ltrim(std::string& s) {
     s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {

@@ -24,7 +24,7 @@
 #include <mutex>
 #include <condition_variable>
 
-typedef int (*func_ptr)(std::mutex&, std::condition_variable&);
+typedef int (*func_ptr)();
 
 struct ldms_config{
     std::string command = "echo \"dead man's switch triggered\"";
@@ -39,7 +39,6 @@ struct ldms_config{
 };
 
 extern ldms_config config;
-extern bool triggered;
 
 bool load_config(std::string& location);
 

@@ -19,32 +19,29 @@
 #include <string>
 #include <string.h>
 #include <thread>
-#include <mutex>
-#include <condition_variable>
 #include <sys/stat.h>
 
 #include "config_loader.hpp"
+#include "globals.hpp"
 
 inline bool switch_armed(std::string& location){
     struct stat buffer;
     return (stat(location.c_str(), &buffer) == 0);
 }
 
-bool initialise_modules(std::mutex& mu, std::condition_variable& cond){
+bool initialise_modules(){
     //std::thread* temp;
     for(std::vector<std::pair<std::string, func_ptr>>::iterator it = config.modules.begin(); it != config.modules.end(); it++){
-        new std::thread(*(it->second), std::ref(mu), std::ref(cond));
+        new std::thread(*(it->second));
     }
 
     return true;
 }
 
-int listen_for_events(std::mutex& mu, std::condition_variable& cond){
-    std::unique_lock<std::mutex> lock(mu);
-
+int listen_for_events(){
     while(true){
-        cond.wait(lock, []{return triggered == true;});
-        std::cout << "pass" << std::endl;
+        std::unique_lock<std::mutex> lock(mu);
+        cond.wait(lock, []{return triggered;});
         // Check is switch armed
         if(switch_armed(config.lock_path)){
             // Run the command on shell
@@ -97,13 +94,10 @@ int main(int argc, char** argv){
         return 1;
     }
 
-    std::mutex mu;
-    std::condition_variable cond;
-
-    initialise_modules(mu, cond);
+    initialise_modules();
 
     // Main loop
-    return_status = listen_for_events(mu, cond);
+    return_status = listen_for_events();
 
     return return_status;
 }

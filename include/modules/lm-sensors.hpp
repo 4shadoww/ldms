@@ -15,9 +15,7 @@
   along with this program.    If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef LDMS_UBS_EVENTS_HPP
-#define LDMS_USB_EVENTS_HPP
-
-int run_usb_events();
+#ifndef LDMS_LMSENSORS_HPP
+#define LDMS_LMSENSORS_HPP
 
 #endif

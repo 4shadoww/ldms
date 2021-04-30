@@ -15,9 +15,8 @@
   along with this program.    If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef LDMS_UBS_EVENTS_HPP
-#define LDMS_USB_EVENTS_HPP
+#include "globals.hpp"
 
-int run_usb_events();
-
-#endif
+bool triggered = false;
+std::mutex mu;
+std::condition_variable cond;

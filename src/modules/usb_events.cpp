@@ -24,6 +24,7 @@
 
 #include "modules/usb_events.hpp"
 #include "config_loader.hpp"
+#include "globals.hpp"
 
 #define SOCK_BUFFER_SIZE 8192
 
@@ -76,7 +77,7 @@ bool trigger_dms(const char* action){
     return false;
 }
 
-int run_usb_events(std::mutex& mu, std::condition_variable& cond){
+int run_usb_events(){
     epoll_event ep_kernel;
     int fd_ep = -1;
     int nl_socket = -1;
@@ -84,9 +85,6 @@ int run_usb_events(std::mutex& mu, std::condition_variable& cond){
     char buffer[SOCK_BUFFER_SIZE];
     int ret;
     device_event* d_event;
-
-    // Lock
-    std::unique_lock<std::mutex> lock(mu);
 
     // Prepare source address
     memset(&src_addr, 0, sizeof(src_addr));
@@ -148,7 +146,7 @@ int run_usb_events(std::mutex& mu, std::condition_variable& cond){
 
             // Check are the requirements met
             if(trigger_dms(d_event->action)){
-                std::cout << "hello there" << std::endl;
+                std::unique_lock<std::mutex> lg(mu);
                 triggered = true;
                 cond.notify_all();
             }

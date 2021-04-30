@@ -5,9 +5,9 @@ OBJDIR=obj
 
 CC=g++
 SRCDIR=src
-MODULES=$(SRCDIR)/modules/usb_events.cpp
-LDMS_SRC=$(SRCDIR)/ldms.cpp $(SRCDIR)/config_loader.cpp $(MODULES)
-SWITCH_SRC=$(SRCDIR)/ldms_switch.cpp $(SRCDIR)/config_loader.cpp $(MODULES)
+MODULES=$(SRCDIR)/modules/usb_events.cpp $(SRCDIR)/modules/lm-sensors.cpp
+LDMS_SRC=$(SRCDIR)/ldms.cpp $(SRCDIR)/config_loader.cpp $(SRCDIR)/globals.cpp $(MODULES)
+SWITCH_SRC=$(SRCDIR)/ldms_switch.cpp $(SRCDIR)/config_loader.cpp $(SRCDIR)/globals.cpp $(MODULES)
 IDIR=include
 LIBS=-I$(IDIR) -pthread
 

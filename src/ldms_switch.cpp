@@ -28,9 +28,20 @@ inline bool switch_armed(std::string& location){
     return (stat(location.c_str(), &buffer) == 0);
 }
 
+std::string modules_as_string(){
+    std::string f = "";
+
+    for(std::vector<std::pair<std::string, func_ptr>>::iterator it = config.modules.begin(); it != config.modules.end(); it++){
+        f += it->first;
+        if(it != config.modules.end()) f += " ";
+    }
+    return f;
+}
+
 void print_config(){
     std::cout << "command = " << config.command << std::endl;
     std::cout << "lock path = " << config.lock_path << std::endl;
+    std::cout << "modules = " << modules_as_string() << std::endl;
     std::cout << "trigger add = " << config.action_add << std::endl;
     std::cout << "trigger remove = " << config.action_remove << std::endl;
     std::cout << "trigger change = " << config.action_change << std::endl;
@@ -64,7 +75,7 @@ void print_version(){
 }
 
 void print_usage(char* argv0){
-    std::cout << "Usage: " << argv0 << " parameter1\n\nOptions:\n-h, --help\t\tshow help\n-v, --version\t\tshow version\narm\t\t\tarm dead man's switch\ndisarm\t\t\tdisarm dead man's switch" << std::endl;
+    std::cout << "Usage: " << argv0 << " [options...] parameter1\n\nOptions:\n-h, --help\t\tshow help\n-v, --version\t\tshow version\n-c, --config\t\tconfig file location\narm\t\t\tarm dead man's switch\ndisarm\t\t\tdisarm dead man's switch\nstatus\t\t\tcheck is switch armed" << std::endl;
 }
 
 int main(int argc, char** argv){
@@ -116,6 +127,13 @@ int main(int argc, char** argv){
             return 1;
         }
         std::cout << "ldms is now disarmed!!!" << std::endl;
+    }else if(strcmp(argv[parameter1_pos], "status") == 0){
+        if(switch_armed(config.lock_path)){
+            std::cout << "switch is armed" << std::endl;
+            return 0;
+        }
+        std::cout << "switch is disarmed" << std::endl;
+        return 0;
     }
 
     return 0;
