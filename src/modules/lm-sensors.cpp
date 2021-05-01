@@ -15,5 +15,17 @@
   along with this program.    If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <iostream>
+#include <sensors/sensors.h>
+
 #include "modules/lm-sensors.hpp"
 #include "globals.hpp"
+
+
+int run_lm_sensors(){
+    int status = sensors_init(NULL);
+
+    if(status != 0){
+        std::cerr << "libsensors returned non-zero value " << status << std::endl;
+    }
+}
