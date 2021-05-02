@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 Noa-Emil Nissinen
+  Copyright (C) 2020 Noa-Emil Nissinen
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -15,9 +15,12 @@
   along with this program.    If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef LDMS_LMSENSORS_HPP
-#define LDMS_LMSENSORS_HPP
+#ifndef LDMS_MODULE_HPP
+#define LDMS_MODULE_HPP
 
-int run_lm_sensors();
+class ldms_module{
+    private:
+
+};
 
 #endif

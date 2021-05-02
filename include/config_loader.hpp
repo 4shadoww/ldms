@@ -29,12 +29,16 @@ typedef int (*func_ptr)();
 struct ldms_config{
     std::string command = "echo \"dead man's switch triggered\"";
     std::string lock_path = "/var/lib/ldms/armed.lck";
+    std::vector<std::pair<std::string, func_ptr>> modules;
+    // Usbevents
     bool action_add  = false;
     bool action_bind = false;
     bool action_remove = false;
     bool action_change = false;
     bool action_unbind = false;
-    std::vector<std::pair<std::string, func_ptr>> modules;
+    // lm-sensors
+    double temp_low = 20;
+    int update_inverval = 500;
 
 };
 

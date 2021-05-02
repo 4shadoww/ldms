@@ -20,7 +20,8 @@
 #include <sstream>
 
 #include "config_loader.hpp"
-#include <modules/usb_events.hpp>
+#include "modules/usb_events.hpp"
+#include "modules/lm-sensors.hpp"
 
 ldms_config config;
 
@@ -80,7 +81,7 @@ bool load_modules(std::vector<std::string>& modules){
         if(*it == "usbevents"){
             config.modules.push_back(std::pair<std::string, func_ptr>("usbevents", &run_usb_events));
         }else if(*it == "lm-sensors"){
-            // Implement
+            config.modules.push_back(std::pair<std::string, func_ptr>("lm-sensors", &run_lm_sensors));
         }else{
             std::cerr << "error: unknown module \"" << *it << "\"" << std::endl;
             return false;
