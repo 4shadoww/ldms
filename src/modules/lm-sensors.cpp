@@ -17,10 +17,12 @@
 
 #include <iostream>
 #include <vector>
+#include <unistd.h>
 #include <sensors/sensors.h>
 
 #include "modules/lm-sensors.hpp"
 #include "globals.hpp"
+#include "config_loader.hpp"
 
 std::vector<std::pair<int, const sensors_chip_name*>> chips;
 std::vector<std::pair<int, const sensors_feature*>> features;
@@ -94,18 +96,36 @@ int init_sensors(){
         }
     }
 
-    std::cout << "using " << subfeatures.size() << " readings" << std::endl;
+    // std::cout << "using " << subfeatures.size() << " readings" << std::endl;
 
     return 0;
 }
 
 int run_lm_sensors(){
-    if(!init_sensors()){
+    int update_interval = config.update_interval * 1000;
+    int status;
+    double value;
+
+    if(init_sensors() != 0){
         return 1;
     }
 
     while(true){
-
+        for(std::vector<std::pair<int, const sensors_chip_name*>>::iterator it0 = chips.begin(); it0 != chips.end(); it0++){
+            for(std::vector<std::pair<int, const sensors_subfeature*>>::iterator it1 = subfeatures.begin(); it1 != subfeatures.end(); it1++){
+                status = sensors_get_value(it0->second, it1->second->number, &value);
+                if(status != 0){
+                    std::cerr << "error: failed to read value from device " << it1->second->name  << std::endl;
+                    continue;
+                }
+                if(status <= config.temp_low){
+                    std::unique_lock<std::mutex> lg(mu);
+                    triggered = true;
+                    cond.notify_all();
+                }
+            }
+        }
+        usleep(update_interval);
     }
 
     return 0;

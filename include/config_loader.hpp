@@ -38,7 +38,7 @@ struct ldms_config{
     bool action_unbind = false;
     // lm-sensors
     double temp_low = 20;
-    int update_inverval = 500;
+    int update_interval = 500;
 
 };
 
