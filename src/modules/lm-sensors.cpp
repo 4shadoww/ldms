@@ -118,7 +118,7 @@ int run_lm_sensors(){
                     std::cerr << "error: failed to read value from device " << it1->second->name  << std::endl;
                     continue;
                 }
-                if(status <= config.temp_low){
+                if(value <= config.temp_low){
                     std::unique_lock<std::mutex> lg(mu);
                     triggered = true;
                     cond.notify_all();
