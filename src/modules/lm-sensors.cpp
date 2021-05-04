@@ -86,8 +86,8 @@ int init_sensors(){
                 std::cout << "error: returned non-zero " << status << std::endl;
                 it1 = subfeatures.erase(it1);
                 continue;
-            }else if(value <= 0){
-                std::cout << "got reading equal or less than zero (" << value << ")" << std::endl;
+            }else if(value <= 0 || value >= 120){
+                std::cout << "got unreliable reading (" << value << ")" << std::endl;
                 it1 = subfeatures.erase(it1);
                 continue;
             }
