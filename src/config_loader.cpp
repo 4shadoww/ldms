@@ -21,7 +21,7 @@
 
 #include "config_loader.hpp"
 #include "modules/usb_events.hpp"
-#include "modules/lm-sensors.hpp"
+#include "modules/lm_sensors.hpp"
 
 ldms_config config;
 
@@ -180,6 +180,25 @@ bool load_config(std::string& location){
                  return false;
             }
             line_number++;
+        }else if(values.at(0) == "temp_low"){
+            try{
+                config.temp_low = std::stod(values.at(1));
+            }catch(const std::invalid_argument& ia){
+                std::cerr << "error on line " << line_number << ": " << line << std::endl;
+                std::cerr << "error: invalid low_temp value" << std::endl;
+                return false;
+            }
+            line_number++;
+        }else if(values.at(0) == "update_interval"){
+            try{
+                config.update_interval = std::stoi(values.at(1));
+            }catch(const std::invalid_argument& ia){
+                std::cerr << "error on line " << line_number << ": " << line << std::endl;
+                std::cerr << "error: invalid update_interval value" << std::endl;
+                return false;
+            }
+            line_number++;
+
         }else{
             std::cerr << "error on line " << line_number << ": " << line << std::endl;
             std::cerr << "error: invalid option \"" << values.at(0) << "\"" << std::endl;

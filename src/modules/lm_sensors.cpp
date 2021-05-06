@@ -21,7 +21,7 @@
 #include <string.h>
 #include <sensors/sensors.h>
 
-#include "modules/lm-sensors.hpp"
+#include "modules/lm_sensors.hpp"
 #include "globals.hpp"
 #include "config_loader.hpp"
 
@@ -205,6 +205,7 @@ int run_lm_sensors(){
                     std::cerr << "error: failed to read value from device " << it1->second->name  << std::endl;
                     continue;
                 }
+
                 if(value <= config.temp_low){
                     std::unique_lock<std::mutex> lg(mu);
                     triggered = true;
