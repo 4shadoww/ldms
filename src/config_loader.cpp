@@ -114,8 +114,9 @@ bool load_config(std::string& location){
 
     // Parse config
     while(getline(reader, line)){
-        // Skip empty
-        if(line == "" || line.empty()){
+        trim(line);
+        // Skip empty and comments
+        if(line == "" || line.empty() || line[0] == '#'){
             line_number++;
             continue;
         }
