@@ -39,6 +39,8 @@ struct ldms_config{
     // lm-sensors
     double temp_low = 20;
     int update_interval = 500;
+    bool sensors_auto_configure = true;
+    std::vector<std::pair<std::string, std::string>> sensors;
 
 };
 

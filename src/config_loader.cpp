@@ -76,6 +76,12 @@ bool parse_triggers(std::vector<std::string>& triggers){
     return true;
 }
 
+bool parse_sensors(std::vector<std::string>& sensors){
+
+
+    return true;
+}
+
 bool load_modules(std::vector<std::string>& modules){
     for(std::vector<std::string>::iterator it = modules.begin(); it != modules.end(); it++){
         if(*it == "usbevents"){
@@ -97,8 +103,8 @@ bool load_config(std::string& location){
     std::string line;
     std::string key;
     std::vector<std::string> values;
-    std::vector<std::string> triggers;
-    std::vector<std::string> modules;
+    std::vector<std::string> temp;
+    int line_number = 1;
 
     reader.open(location);
     if(!reader.is_open()){
@@ -108,27 +114,56 @@ bool load_config(std::string& location){
 
     // Parse config
     while(getline(reader, line)){
+        // Skip empty
+        if(line == "" || line.empty()){
+            line_number++;
+            continue;
+        }
+
         values = split_string(line, '=');
-        if(values.size() == 1 && values.at(0).empty()) continue;
-        if(values.size() > 2){
+
+        if(values.size() == 1 && values.at(0).empty()){
+            line_number++;
+            continue;
+        }else if(values.size() > 2){
+            std::cerr << "error on line " << line_number << ": " << line << std::endl;
             std::cerr << "config parsing error: multiple \"=\" in line" << std::endl;
+            return false;
+        }else if(values.size() < 2){
+            std::cerr << "error on line " << line_number << ": " << line << std::endl;
+            std::cerr << "config parsing error: no value defined to variable" << std::endl;
             return false;
         }
 
         if(values.at(0) == "command"){
             config.command = values.at(1);
+            line_number++;
             continue;
         }else if(values.at(0) == "lock_path"){
             config.lock_path = values.at(1);
+            line_number++;
             continue;
         }else if(values.at(0) == "triggers"){
             // Do more parsing
-            triggers = split_string(values.at(1), ' ');
-            if(!parse_triggers(triggers)) return false;
+            temp = split_string(values.at(1), ' ');
+            if(!parse_triggers(temp)) return false;
+            line_number++;
         }else if(values.at(0) == "modules"){
-            modules = split_string(values.at(1), ' ');
-            if(!load_modules(modules)) return false;
+            temp = split_string(values.at(1), ' ');
+            if(!load_modules(temp)) return false;
+            line_number++;
+        }else if(values.at(0) == "sensors"){
+            if(values.at(1) == "auto"){
+                config.sensors_auto_configure = true;
+                line_number++;
+                continue;
+            }
+            config.sensors_auto_configure = false;
+            temp = split_string(values.at(1), ' ');
+            if(!parse_sensors(temp)) return false;
+            line_number++;
         }else{
+            std::cerr << "error on line " << line_number << ": " << line << std::endl;
             std::cerr << "error: invalid option \"" << values.at(0) << "\"" << std::endl;
             return false;
         }
