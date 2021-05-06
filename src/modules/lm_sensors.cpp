@@ -200,6 +200,7 @@ int run_lm_sensors(){
     while(true){
         for(std::vector<std::pair<int, const sensors_chip_name*>>::iterator it0 = chips.begin(); it0 != chips.end(); it0++){
             for(std::vector<std::pair<int, const sensors_subfeature*>>::iterator it1 = subfeatures.begin(); it1 != subfeatures.end(); it1++){
+                if(it0->first != it1->first) continue;
                 status = sensors_get_value(it0->second, it1->second->number, &value);
                 if(status != 0){
                     std::cerr << "error: failed to read value from device " << it1->second->name  << std::endl;
