@@ -77,7 +77,15 @@ bool parse_triggers(std::vector<std::string>& triggers){
 }
 
 bool parse_sensors(std::vector<std::string>& sensors){
-
+    std::vector<std::string> temp;
+    for(std::vector<std::string>::iterator it = sensors.begin(); it != sensors.end(); it++){
+        temp = split_string(*it, '-');
+        if(temp.size() != 2){
+            std::cerr << "error: invalid syntax on sensor \"" << *it << "\""  << std::endl;
+            return false;
+        }
+        config.sensors.push_back(std::pair<std::string, std::string>(temp.at(0), temp.at(1)));
+    }
 
     return true;
 }
@@ -147,11 +155,17 @@ bool load_config(std::string& location){
         }else if(values.at(0) == "triggers"){
             // Do more parsing
             temp = split_string(values.at(1), ' ');
-            if(!parse_triggers(temp)) return false;
+            if(!parse_triggers(temp)){
+                std::cerr << "error on line " << line_number << ": " << line << std::endl;
+                return false;
+            }
             line_number++;
         }else if(values.at(0) == "modules"){
             temp = split_string(values.at(1), ' ');
-            if(!load_modules(temp)) return false;
+            if(!load_modules(temp)){
+                std::cerr << "error on line " << line_number << ": " << line << std::endl;
+                return false;
+            }
             line_number++;
         }else if(values.at(0) == "sensors"){
             if(values.at(1) == "auto"){
@@ -161,7 +175,10 @@ bool load_config(std::string& location){
             }
             config.sensors_auto_configure = false;
             temp = split_string(values.at(1), ' ');
-            if(!parse_sensors(temp)) return false;
+            if(!parse_sensors(temp)){
+                std::cerr << "error on line " << line_number << ": " << line << std::endl;
+                 return false;
+            }
             line_number++;
         }else{
             std::cerr << "error on line " << line_number << ": " << line << std::endl;
