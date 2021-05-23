@@ -38,9 +38,11 @@ struct ldms_config{
     bool action_unbind = false;
     // lm-sensors
     double temp_low = 20;
-    int update_interval = 500;
+    int sensors_update_interval = 500;
     bool sensors_auto_configure = true;
     std::vector<std::pair<std::string, std::string>> sensors;
+    // Network
+    std::vector<std::string> network_interfaces;
 
 };
 

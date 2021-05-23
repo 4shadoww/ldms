@@ -20,8 +20,10 @@
 #include <sstream>
 
 #include "config_loader.hpp"
+
 #include "modules/usb_events.hpp"
 #include "modules/lm_sensors.hpp"
+#include "modules/network.hpp"
 
 ldms_config config;
 
@@ -96,6 +98,8 @@ bool load_modules(std::vector<std::string>& modules){
             config.modules.push_back(std::pair<std::string, func_ptr>("usbevents", &run_usb_events));
         }else if(*it == "lm-sensors"){
             config.modules.push_back(std::pair<std::string, func_ptr>("lm-sensors", &run_lm_sensors));
+        }else if(*it == "network"){
+            config.modules.push_back(std::pair<std::string, func_ptr>("network", &run_network));
         }else{
             std::cerr << "error: unknown module \"" << *it << "\"" << std::endl;
             return false;
@@ -189,14 +193,31 @@ bool load_config(std::string& location){
                 return false;
             }
             line_number++;
-        }else if(values.at(0) == "update_interval"){
+        }else if(values.at(0) == "sensors_update_interval"){
             try{
-                config.update_interval = std::stoi(values.at(1));
+                config.sensors_update_interval = std::stoi(values.at(1));
             }catch(const std::invalid_argument& ia){
                 std::cerr << "error on line " << line_number << ": " << line << std::endl;
-                std::cerr << "error: invalid update_interval value" << std::endl;
+                std::cerr << "error: invalid sensors_update_interval value" << std::endl;
                 return false;
             }
+            line_number++;
+        }else if(values.at(0) == "network_update_interval"){
+            try{
+                config.network_update_interval = std::stoi(values.at(1));
+            }catch(const std::invalid_argument& ia){
+                std::cerr << "error on line " << line_number << ": " << line << std::endl;
+                std::cerr << "error: invalid network_update_interval value" << std::endl;
+                return false;
+           }
+           line_number++;
+        }else if(values.at(0) == "network_interfaces"){
+            temp = split_string(values.at(1), ' ');
+            if(temp.size() < 1){
+                std::cerr << "error on line " << line_number << ": " << line << std::endl;
+                return false;
+            }
+            config.network_interfaces = temp;
             line_number++;
 
         }else{
