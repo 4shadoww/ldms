@@ -189,7 +189,7 @@ int init_sensors(){
 }
 
 int run_lm_sensors(){
-    int update_interval = config.update_interval * 1000;
+    int update_interval = config.sensors_update_interval * 1000;
     int status;
     double value;
 
