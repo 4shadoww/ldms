@@ -92,6 +92,18 @@ bool parse_sensors(std::vector<std::string>& sensors){
     return true;
 }
 
+bool parse_bool(std::string str, bool* val){
+    if(str == "true"){
+        *val = true;
+        return true;
+    }else if(str == "false"){
+        *val = false;
+        return true;
+    }
+
+    return false;
+}
+
 bool load_modules(std::vector<std::string>& modules){
     for(std::vector<std::string>::iterator it = modules.begin(); it != modules.end(); it++){
         if(*it == "usbevents"){
@@ -105,7 +117,6 @@ bool load_modules(std::vector<std::string>& modules){
             return false;
         }
     }
-
 
     return true;
 }
@@ -202,14 +213,13 @@ bool load_config(std::string& location){
                 return false;
             }
             line_number++;
-        }else if(values.at(0) == "network_update_interval"){
-            try{
-                config.network_update_interval = std::stoi(values.at(1));
-            }catch(const std::invalid_argument& ia){
+        }else if(values.at(0) == "disallow_new_interfaces"){
+            if(!parse_bool(values.at(1), &config.disallow_new_interfaces)){
                 std::cerr << "error on line " << line_number << ": " << line << std::endl;
-                std::cerr << "error: invalid network_update_interval value" << std::endl;
+                std::cerr << "error: disallow_new_interfaces value" << std::endl;
                 return false;
-           }
+            }
+
            line_number++;
         }else if(values.at(0) == "network_interfaces"){
             temp = split_string(values.at(1), ' ');

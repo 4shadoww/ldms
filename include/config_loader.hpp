@@ -43,7 +43,7 @@ struct ldms_config{
     std::vector<std::pair<std::string, std::string>> sensors;
     // Network
     std::vector<std::string> network_interfaces;
-
+    bool disallow_new_interfaces = true;
 };
 
 extern ldms_config config;
