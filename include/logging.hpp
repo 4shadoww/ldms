@@ -14,15 +14,14 @@
   You should have received a copy of the GNU General Public License
   along with this program.    If not, see <https://www.gnu.org/licenses/>.
 */
-#include "globals.hpp"
+#ifndef LDMS_LOGGING_HPP
+#define LDMS_LOGGING_HPP
 
-bool triggered = false;
-bool crashed = false;
-std::mutex mu;
-std::condition_variable cond;
+#include <string>
+#include <syslog.h>
 
-void thread_crashed(){
-    std::unique_lock<std::mutex> lg(mu);
-    crashed = true;
-    cond.notify_all();
-}
+void open_logging();
+void init_logging();
+void csyslog(int level, std::string str);
+
+#endif

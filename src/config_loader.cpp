@@ -20,6 +20,7 @@
 #include <sstream>
 
 #include "config_loader.hpp"
+#include "logging.hpp"
 
 #include "modules/usb_events.hpp"
 #include "modules/lm_sensors.hpp"
@@ -70,7 +71,7 @@ bool parse_triggers(std::vector<std::string>& triggers){
         }else if(*it == "unbind"){
             config.action_unbind = true;
         }else{
-            std::cerr << "error: unknown trigger \"" << *it << "\"" << std::endl;
+            csyslog(LOG_ERR, ("error: unknown trigger \"" + *it + "\""));
             return false;
         }
     }
@@ -83,7 +84,8 @@ bool parse_sensors(std::vector<std::string>& sensors){
     for(std::vector<std::string>::iterator it = sensors.begin(); it != sensors.end(); it++){
         temp = split_string(*it, '-');
         if(temp.size() != 2){
-            std::cerr << "error: invalid syntax on sensor \"" << *it << "\""  << std::endl;
+            csyslog(LOG_ERR, ("error: invalid syntax on sensor \"" + *it + "\""));
+
             return false;
         }
         config.sensors.push_back(std::pair<std::string, std::string>(temp.at(0), temp.at(1)));
@@ -113,12 +115,16 @@ bool load_modules(std::vector<std::string>& modules){
         }else if(*it == "network"){
             config.modules.push_back(std::pair<std::string, func_ptr>("network", &run_network));
         }else{
-            std::cerr << "error: unknown module \"" << *it << "\"" << std::endl;
+            csyslog(LOG_ERR, ("error: unknown module \"" + *it + "\""));
             return false;
         }
     }
 
     return true;
+}
+
+void error_on_line(int line_number, std::string line){
+    csyslog(LOG_ERR, ("error on line " + std::to_string(line_number) + ": " + line));
 }
 
 bool load_config(std::string& location){
@@ -131,7 +137,7 @@ bool load_config(std::string& location){
 
     reader.open(location);
     if(!reader.is_open()){
-        std::cerr << "error: config file \"" << location << "\" not found" << std::endl;
+        csyslog(LOG_ERR, ("error: config file \"" + location + "\" not found"));
         return false;
     }
 
@@ -150,12 +156,12 @@ bool load_config(std::string& location){
             line_number++;
             continue;
         }else if(values.size() > 2){
-            std::cerr << "error on line " << line_number << ": " << line << std::endl;
-            std::cerr << "config parsing error: multiple \"=\" in line" << std::endl;
+            error_on_line(line_number, line);
+            csyslog(LOG_ERR, "config parsing error: multiple \"=\" in line");
             return false;
         }else if(values.size() < 2){
-            std::cerr << "error on line " << line_number << ": " << line << std::endl;
-            std::cerr << "config parsing error: no value defined to variable" << std::endl;
+            error_on_line(line_number, line);
+            csyslog(LOG_ERR, "config parsing error: no value defined to variable");
             return false;
         }
 
@@ -171,16 +177,24 @@ bool load_config(std::string& location){
             // Do more parsing
             temp = split_string(values.at(1), ' ');
             if(!parse_triggers(temp)){
-                std::cerr << "error on line " << line_number << ": " << line << std::endl;
+                error_on_line(line_number, line);
                 return false;
             }
             line_number++;
         }else if(values.at(0) == "modules"){
             temp = split_string(values.at(1), ' ');
             if(!load_modules(temp)){
-                std::cerr << "error on line " << line_number << ": " << line << std::endl;
+                error_on_line(line_number, line);
                 return false;
             }
+            line_number++;
+        }else if(values.at(0) == "logging"){
+            if(!parse_bool(values.at(1), &config.disallow_new_interfaces)){
+                error_on_line(line_number, line);
+                csyslog(LOG_ERR, "error: logging value");
+                return false;
+            }
+
             line_number++;
         }else if(values.at(0) == "sensors"){
             if(values.at(1) == "auto"){
@@ -191,16 +205,16 @@ bool load_config(std::string& location){
             config.sensors_auto_configure = false;
             temp = split_string(values.at(1), ' ');
             if(!parse_sensors(temp)){
-                std::cerr << "error on line " << line_number << ": " << line << std::endl;
-                 return false;
+                error_on_line(line_number, line);
+                return false;
             }
             line_number++;
         }else if(values.at(0) == "temp_low"){
             try{
                 config.temp_low = std::stod(values.at(1));
             }catch(const std::invalid_argument& ia){
-                std::cerr << "error on line " << line_number << ": " << line << std::endl;
-                std::cerr << "error: invalid low_temp value" << std::endl;
+                error_on_line(line_number, line);
+                csyslog(LOG_ERR, "error: invalid low_temp value");
                 return false;
             }
             line_number++;
@@ -208,15 +222,15 @@ bool load_config(std::string& location){
             try{
                 config.sensors_update_interval = std::stoi(values.at(1));
             }catch(const std::invalid_argument& ia){
-                std::cerr << "error on line " << line_number << ": " << line << std::endl;
-                std::cerr << "error: invalid sensors_update_interval value" << std::endl;
+                error_on_line(line_number, line);
+                csyslog(LOG_ERR, "error: invalid sensors_update_interval value");
                 return false;
             }
             line_number++;
         }else if(values.at(0) == "disallow_new_interfaces"){
             if(!parse_bool(values.at(1), &config.disallow_new_interfaces)){
-                std::cerr << "error on line " << line_number << ": " << line << std::endl;
-                std::cerr << "error: disallow_new_interfaces value" << std::endl;
+                error_on_line(line_number, line);
+                csyslog(LOG_ERR, "error: disallow_new_interfaces value");
                 return false;
             }
 
@@ -224,15 +238,15 @@ bool load_config(std::string& location){
         }else if(values.at(0) == "network_interfaces"){
             temp = split_string(values.at(1), ' ');
             if(temp.size() < 1){
-                std::cerr << "error on line " << line_number << ": " << line << std::endl;
+                error_on_line(line_number, line);
                 return false;
             }
             config.network_interfaces = temp;
             line_number++;
 
         }else{
-            std::cerr << "error on line " << line_number << ": " << line << std::endl;
-            std::cerr << "error: invalid option \"" << values.at(0) << "\"" << std::endl;
+            error_on_line(line_number, line);
+            csyslog(LOG_ERR, ("error: invalid option \"" + values.at(0) + "\""));
             return false;
         }
     }

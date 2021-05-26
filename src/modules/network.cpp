@@ -26,6 +26,7 @@
 #include "modules/network.hpp"
 #include "config_loader.hpp"
 #include "globals.hpp"
+#include "logging.hpp"
 
 std::vector<std::pair<std::string, bool>> addresses;
 
@@ -54,7 +55,7 @@ void trigger_switch(){
 int init_network(){
     struct ifaddrs* ifaddr;
     if(getifaddrs(&ifaddr) == -1){
-        std::cerr << "error: failed to list network interfaces" << std::endl;
+        csyslog(LOG_ERR,  "error: failed to list network interfaces");
         return -1;
     };
 
@@ -86,7 +87,7 @@ int run_network(){
     struct nlmsghdr* nh;
 
     if((fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE)) == -1){
-        std::cerr << "error: couldn't open NETLINK_ROUTE socket" << std::endl;
+        csyslog(LOG_ERR, "error: couldn't open NETLINK_ROUTE socket");
         return 1;
     }
 
@@ -95,17 +96,17 @@ int run_network(){
     sa.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV6_IFADDR;
 
     if(bind(fd, (struct sockaddr*)&sa, sizeof(sa)) == -1){
-        std::cerr << "error: couldn't bind" << std::endl;
+        csyslog(LOG_ERR, "error: couldn't bind");
         return 1;
     }
 
     while(true){
         len = recv(fd, buffer, sizeof(buffer), 0);
         if(len == 0){
-            std::cerr << "error: failed to load network event" << std::endl;
+            csyslog(LOG_ERR, "error: failed to load network event");
             break;
         }else if(len == -1){
-            std::cerr << "error: error occurred while receiving network event" << std::endl;
+            csyslog(LOG_ERR, "error: error occurred while receiving network event");
             break;
         }
         nh = (struct nlmsghdr*)buffer;

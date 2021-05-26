@@ -20,9 +20,13 @@
 #include <string.h>
 #include <thread>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include "config_loader.hpp"
 #include "globals.hpp"
+#include "logging.hpp"
+
+std::vector<std::thread*> threads;
 
 inline bool switch_armed(std::string& location){
     struct stat buffer;
@@ -30,9 +34,8 @@ inline bool switch_armed(std::string& location){
 }
 
 bool initialise_modules(){
-    //std::thread* temp;
     for(std::vector<std::pair<std::string, func_ptr>>::iterator it = config.modules.begin(); it != config.modules.end(); it++){
-        new std::thread(*(it->second));
+        threads.push_back(new std::thread(*(it->second)));
     }
 
     return true;
@@ -41,7 +44,13 @@ bool initialise_modules(){
 int listen_for_events(){
     while(true){
         std::unique_lock<std::mutex> lock(mu);
-        cond.wait(lock, []{return triggered;});
+        cond.wait(lock, []{return (triggered || crashed);});
+
+        if(crashed){
+            csyslog(LOG_ERR, "error: thread has crashed");
+            return 1;
+        }
+
         // Check is switch armed
         if(switch_armed(config.lock_path)){
             // Run the command on shell
@@ -66,6 +75,8 @@ int main(int argc, char** argv){
     int return_status = 0;
     std::string config_location = "/etc/ldms/ldms.conf";
 
+    open_logging();
+
     // Parse arguments
     if(argc >= 2){
         if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0){
@@ -76,7 +87,7 @@ int main(int argc, char** argv){
             return 0;
         }else if(strcmp(argv[1], "--config") == 0 || strcmp(argv[1], "-c") == 0){
             if(argc < 3){
-                std::cerr << "please give the config location" << std::endl;
+                csyslog(LOG_ERR, "please give the config location");
                 return 1;
             }
             config_location = std::string(argv[2]);
@@ -85,12 +96,14 @@ int main(int argc, char** argv){
 
     // Load config
     if(!load_config(config_location)){
-        std::cerr << "failed to config" << std::endl;
+        csyslog(LOG_ERR, "failed to config");
         return 1;
     }
 
+    init_logging();
+
     if(config.modules.size() == 0){
-        std::cerr << "no modules defined" << std::endl;
+        csyslog(LOG_ERR, "no modules defined");
         return 1;
     }
 

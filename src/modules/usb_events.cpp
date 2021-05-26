@@ -25,6 +25,7 @@
 #include "modules/usb_events.hpp"
 #include "config_loader.hpp"
 #include "globals.hpp"
+#include "logging.hpp"
 
 #define SOCK_BUFFER_SIZE 8192
 
@@ -95,20 +96,20 @@ int run_usb_events(){
     nl_socket = socket(AF_NETLINK, (SOCK_DGRAM | SOCK_CLOEXEC), NETLINK_KOBJECT_UEVENT);
 
     if(nl_socket < 0){
-        std::cerr << "error: failed to open socket" << std::endl;
+        csyslog(LOG_ERR, "error: failed to open socket");
         return 1;
     }
 
     ret = bind(nl_socket, (struct sockaddr*) &src_addr, sizeof(src_addr));
     if(ret){
-        std::cerr << "error: failed to bind netlink socket" << std::endl;
+        csyslog(LOG_ERR, "error: failed to bind netlink socket");
         close(nl_socket);
         return 1;
     }
 
     fd_ep = epoll_create1(EPOLL_CLOEXEC);
     if(fd_ep < 0){
-        std::cerr << "error: epoll_create1() failed" << std::endl;
+        csyslog(LOG_ERR, "error: epoll_create1() failed");
         return 1;
     }
 
@@ -116,7 +117,7 @@ int run_usb_events(){
     ep_kernel.data.fd = nl_socket;
 
     if (epoll_ctl(fd_ep, EPOLL_CTL_ADD, nl_socket, &ep_kernel) < 0) {
-        std::cerr << "error: failed to add socket to epoll" << std::endl;
+        csyslog(LOG_ERR, "error: failed to add socket to epoll");
         return 5;
     }
 
@@ -127,14 +128,14 @@ int run_usb_events(){
 
         if (fdcount < 0) {
             if (errno != EINTR)
-                std::cerr << "error while receiving uevent message" << std::endl;
+                csyslog(LOG_ERR, "error while receiving uevent message");
             continue;
         }
         // Iterate events
         for(int i = 0; i < fdcount; i++){
             int read_status = read(ev[i].data.fd, buffer, SOCK_BUFFER_SIZE);
             if(read_status < 0){
-                std::cerr << "error: failed to read socket ("  << std::endl;
+                csyslog(LOG_ERR, "error: failed to read socket");
                 continue;
             }
             d_event = parse_uevent(buffer);

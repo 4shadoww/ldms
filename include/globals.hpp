@@ -22,7 +22,10 @@
 #include <condition_variable>
 
 extern bool triggered;
+extern bool crashed;
 extern std::mutex mu;
 extern std::condition_variable cond;
+
+void thread_crashed();
 
 #endif

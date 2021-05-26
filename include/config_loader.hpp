@@ -30,6 +30,7 @@ struct ldms_config{
     std::string command = "echo \"dead man's switch triggered\"";
     std::string lock_path = "/var/lib/ldms/armed.lck";
     std::vector<std::pair<std::string, func_ptr>> modules;
+    bool logging = true;
     // Usbevents
     bool action_add  = false;
     bool action_bind = false;

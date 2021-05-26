@@ -24,6 +24,7 @@
 #include "modules/lm_sensors.hpp"
 #include "globals.hpp"
 #include "config_loader.hpp"
+#include "logging.hpp"
 
 std::vector<std::pair<int, const sensors_chip_name*>> chips;
 std::vector<std::pair<int, const sensors_feature*>> features;
@@ -74,11 +75,11 @@ int auto_config(){
             double value;
             int status = sensors_get_value(it0->second, it1->second->number, &value);
             if(status != 0){
-                std::cout << "error: returned non-zero " << status << std::endl;
+                csyslog(LOG_ERR, ("error: returned non-zero " + std::to_string(status)));
                 it1 = subfeatures.erase(it1);
                 continue;
             }else if(value <= 0 || value >= 120){
-                std::cout << "got unreliable reading (" << value << ")" << std::endl;
+                csyslog(LOG_ERR, ("got unreliable reading (" + std::to_string(value) + ")"));
                 it1 = subfeatures.erase(it1);
                 continue;
             }
@@ -120,7 +121,7 @@ int manual_config(){
             chip_name = sensors_get_detected_chips(NULL, &i);
         }
         if(!found){
-            std::cerr << "error: adapter with prefix: \"" << it->first << "\" not found" << std::endl;
+            csyslog(LOG_ERR, "error: adapter with prefix: \"" + it->first + "\" not found");
             return 1;
         }
     }
@@ -142,7 +143,7 @@ int manual_config(){
             }
         }
         if(!found){
-            std::cerr << "error: feature with name: \"" << it0->first << "-" << it0->second << "\" not found" << std::endl;
+            csyslog(LOG_ERR, ("error: feature with name: \"" + it0->first + "-" + it0->second + "\" not found"));
             return 1;
         }
     }
@@ -169,18 +170,18 @@ int init_sensors(){
     int status = sensors_init(NULL);
 
     if(status != 0){
-        std::cerr << "libsensors returned non-zero value " << status << std::endl;
+        csyslog(LOG_ERR, ("libsensors returned non-zero value " + std::to_string(status)));
         return 1;
     }
 
     if(config.sensors_auto_configure){
         if(auto_config() != 0){
-            std::cerr << "error: failed to auto configure lm-sensors" << std::endl;
+            csyslog(LOG_ERR, "error: failed to auto configure lm-sensors");
             return 1;
         }
     }else{
         if(manual_config() != 0){
-            std::cerr << "error: failed to manually configure lm-sensors" << std::endl;
+            csyslog(LOG_ERR,  "error: failed to manually configure lm-sensors");
             return 1;
         }
     }
@@ -194,6 +195,7 @@ int run_lm_sensors(){
     double value;
 
     if(init_sensors() != 0){
+        thread_crashed();
         return 1;
     }
 
@@ -203,7 +205,7 @@ int run_lm_sensors(){
                 if(it0->first != it1->first) continue;
                 status = sensors_get_value(it0->second, it1->second->number, &value);
                 if(status != 0){
-                    std::cerr << "error: failed to read value from device " << it1->second->name  << std::endl;
+                    csyslog(LOG_ERR, ("error: failed to read value from device " + std::string(it1->second->name)));
                     continue;
                 }
 
