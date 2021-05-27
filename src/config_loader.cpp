@@ -79,6 +79,12 @@ bool parse_triggers(std::vector<std::string>& triggers){
     return true;
 }
 
+bool parse_whitelist(std::vector<std::string>& list){
+    // No fancy parsing currently
+    config.usb_events_whitelist = list;
+    return true;
+}
+
 bool parse_sensors(std::vector<std::string>& sensors){
     std::vector<std::string> temp;
     for(std::vector<std::string>::iterator it = sensors.begin(); it != sensors.end(); it++){
@@ -177,6 +183,15 @@ bool load_config(std::string& location){
             // Do more parsing
             temp = split_string(values.at(1), ' ');
             if(!parse_triggers(temp)){
+                error_on_line(line_number, line);
+                return false;
+            }
+            line_number++;
+        }else if(values.at(0) == "usb_events_whitelist"){
+            // Do more parsing
+            temp = split_string(values.at(1), ' ');
+            config.usb_events_whitelist_enabled = true;
+            if(!parse_whitelist(temp)){
                 error_on_line(line_number, line);
                 return false;
             }

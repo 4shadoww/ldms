@@ -68,6 +68,40 @@ device_event* parse_uevent(char* msg){
     return d_event;
 }
 
+bool check_whitelist(device_event* event){
+    char* pos = NULL;
+    char* num_start = NULL;
+    char* num_end = NULL;
+    int distance;
+    // Don't get triggered by virtual devices
+    // therefore return by default true
+    if(strncmp(event->device, "/devices/pci", 12) == 0){
+        pos = strstr(event->device, "/usb");
+        // Exit if not found or char array ends
+        if(pos == NULL || ((strlen(event->device) - (pos - event->device) - 4) < 1)) return false;
+
+        num_start = &pos[4];
+        num_end = strstr(num_start, "/");
+
+        if(num_end == NULL) return false;
+
+        distance = num_end - num_start;
+
+        // Bus id position found, now iterate whitelist
+        for(std::vector<std::string>::iterator it = config.usb_events_whitelist.begin(); it != config.usb_events_whitelist.end(); it++){
+            if(distance == 1 && it->size() == 1 && (strncmp(num_start, it->c_str(), 1) == 0)){
+                csyslog(LOG_INFO, ("bus id " + *it + " is on whitelist"));
+                return true;
+            }else if(distance == it->size() && strncmp(num_start, it->c_str(), distance) == 0){
+                csyslog(LOG_INFO, ("bus id " + *it + " is on whitelist"));
+                return true;
+            }
+        }
+        return false;
+    }
+    return true;
+}
+
 bool trigger_dms(const char* action){
     if(strcmp(action, "add") == 0 && config.action_add) return true;
     else if(strcmp(action, "bind") == 0 && config.action_bind) return true;
@@ -116,7 +150,7 @@ int run_usb_events(){
     ep_kernel.events = EPOLLIN;
     ep_kernel.data.fd = nl_socket;
 
-    if (epoll_ctl(fd_ep, EPOLL_CTL_ADD, nl_socket, &ep_kernel) < 0) {
+    if(epoll_ctl(fd_ep, EPOLL_CTL_ADD, nl_socket, &ep_kernel) < 0){
         csyslog(LOG_ERR, "error: failed to add socket to epoll");
         return 5;
     }
@@ -126,8 +160,8 @@ int run_usb_events(){
         struct epoll_event ev[4];
         int fdcount = epoll_wait(fd_ep, ev, 4, -1);
 
-        if (fdcount < 0) {
-            if (errno != EINTR)
+        if(fdcount < 0){
+            if(errno != EINTR)
                 csyslog(LOG_ERR, "error while receiving uevent message");
             continue;
         }
@@ -138,10 +172,16 @@ int run_usb_events(){
                 csyslog(LOG_ERR, "error: failed to read socket");
                 continue;
             }
+
             d_event = parse_uevent(buffer);
 
             if(d_event->device == nullptr){
                 delete d_event;
+                continue;
+            }
+
+            // White list
+            if(config.usb_events_whitelist_enabled && check_whitelist(d_event)){
                 continue;
             }
 

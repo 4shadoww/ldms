@@ -37,6 +37,8 @@ struct ldms_config{
     bool action_remove = false;
     bool action_change = false;
     bool action_unbind = false;
+    bool usb_events_whitelist_enabled = false;
+    std::vector<std::string> usb_events_whitelist;
     // lm-sensors
     double temp_low = 20;
     int sensors_update_interval = 500;
