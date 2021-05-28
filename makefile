@@ -27,12 +27,14 @@ debug: CFLAGS += -g
 debug: all
 
 install: $(LDMS_EXECUTABLE) $(SWITCH_EXECUTABLE)
-	install $(LDMS_EXECUTABLE) /usr/bin
-	install $(SWITCH_EXECUTABLE) /usr/bin
+	install $(LDMS_EXECUTABLE) /usr/bin/
+	install $(SWITCH_EXECUTABLE) /usr/bin/
+	install -m 644 ldmsd.service /usr/lib/systemd/system/
 	install -m 644 -D example.conf /var/lib/ldms/example.conf
 	install -m 644 -D example.conf /etc/ldms/ldmsd.conf
 
 uninstall:
 	rm /usr/bin/$(LDMS_EXECUTABLE)
 	rm /usr/bin/$(SWITCH_EXECUTABLE)
+	rm /usr/lib/systemd/system/ldmsd.service
 	rm -rf /var/lib/ldms
