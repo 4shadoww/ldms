@@ -72,7 +72,7 @@ bool check_whitelist(device_event* event){
     char* pos = NULL;
     char* num_start = NULL;
     char* num_end = NULL;
-    int distance;
+    uint distance;
     // Don't get triggered by virtual devices
     // therefore return by default true
     if(strncmp(event->device, "/devices/pci", 12) == 0){
@@ -88,7 +88,7 @@ bool check_whitelist(device_event* event){
         distance = num_end - num_start;
 
         // Bus id position found, now iterate whitelist
-        for(std::vector<std::string>::iterator it = config.usb_events_whitelist.begin(); it != config.usb_events_whitelist.end(); it++){
+        for(std::vector<std::string>::iterator it = config.ue_whitelist.begin(); it != config.ue_whitelist.end(); it++){
             if(distance == 1 && it->size() == 1 && (strncmp(num_start, it->c_str(), 1) == 0)){
                 csyslog(LOG_INFO, ("bus id " + *it + " is on whitelist"));
                 return true;
@@ -181,7 +181,7 @@ int run_usb_events(){
             }
 
             // White list
-            if(config.usb_events_whitelist_enabled && check_whitelist(d_event)){
+            if(config.ue_whitelist_enabled && check_whitelist(d_event)){
                 continue;
             }
 

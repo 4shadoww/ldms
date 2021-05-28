@@ -1,0 +1,57 @@
+.TH LDMS 1 "2021-05-08" "1.0"
+.SH NAME
+ldms – anti-forensics dead man's switch
+
+.SH SYNOPSIS
+.B ldms
+[\fIoptions\fR]
+.I command
+
+.SH DESCRIPTION
+.B Linux dead man's switch
+for short
+.B ldms
+is an anti-forensics program that run's defined command upon triggering an event.
+In an anti-forensics manner, it could be a script that unmounts encrypted partitions
+and clears ram swap and shutdowns the computer.
+
+.SH OPTIONS
+.TP
+\fB-h\fR, \fB--help\fR
+show help
+.TP
+\fB-v\fR, \fB--version\fR
+show version
+.TP
+\fB-c\fR, \fB--config\fR
+config file location
+.TP
+.B arm
+arm dead man's switch
+.TP
+.B disarm
+disarm dead man's switch
+.TP
+.B status
+check is switch armed
+
+.SH FILES
+.TP
+.I /etc/ldms/ldmsd.conf
+daemon's configuration file
+.TP
+.I /var/lib/ldms/example.conf
+example daemon's configuration file
+.TP
+.I /var/lib/ldms/switch.lck
+daemon's lock file
+
+.SH SEE ALSO
+.BR ldmsd(1)
+.BR ldmsd.conf(7)
+
+.SH AUTHOR
+Noa-Emil Nissinen
+
+.SH BUGS
+https://gitlab.com/4shadoww/ldms

@@ -22,9 +22,13 @@
 #include "config_loader.hpp"
 #include "logging.hpp"
 
+#ifdef LDMS_DAEMON
+
 #include "modules/usb_events.hpp"
 #include "modules/lm_sensors.hpp"
 #include "modules/network.hpp"
+
+#endif
 
 ldms_config config;
 
@@ -81,7 +85,7 @@ bool parse_triggers(std::vector<std::string>& triggers){
 
 bool parse_whitelist(std::vector<std::string>& list){
     // No fancy parsing currently
-    config.usb_events_whitelist = list;
+    config.ue_whitelist = list;
     return true;
 }
 
@@ -112,6 +116,8 @@ bool parse_bool(std::string str, bool* val){
     return false;
 }
 
+#ifdef LDMS_DAEMON
+
 bool load_modules(std::vector<std::string>& modules){
     for(std::vector<std::string>::iterator it = modules.begin(); it != modules.end(); it++){
         if(*it == "usbevents"){
@@ -128,6 +134,8 @@ bool load_modules(std::vector<std::string>& modules){
 
     return true;
 }
+
+#endif
 
 void error_on_line(int line_number, std::string line){
     csyslog(LOG_ERR, ("error on line " + std::to_string(line_number) + ": " + line));
@@ -179,29 +187,14 @@ bool load_config(std::string& location){
             config.lock_path = values.at(1);
             line_number++;
             continue;
-        }else if(values.at(0) == "triggers"){
-            // Do more parsing
-            temp = split_string(values.at(1), ' ');
-            if(!parse_triggers(temp)){
-                error_on_line(line_number, line);
-                return false;
-            }
-            line_number++;
-        }else if(values.at(0) == "usb_events_whitelist"){
-            // Do more parsing
-            temp = split_string(values.at(1), ' ');
-            config.usb_events_whitelist_enabled = true;
-            if(!parse_whitelist(temp)){
-                error_on_line(line_number, line);
-                return false;
-            }
-            line_number++;
         }else if(values.at(0) == "modules"){
             temp = split_string(values.at(1), ' ');
+            #ifdef LDMS_DAEMON
             if(!load_modules(temp)){
                 error_on_line(line_number, line);
                 return false;
             }
+            #endif
             line_number++;
         }else if(values.at(0) == "logging"){
             if(!parse_bool(values.at(1), &config.disallow_new_interfaces)){
@@ -210,6 +203,23 @@ bool load_config(std::string& location){
                 return false;
             }
 
+            line_number++;
+        }else if(values.at(0) == "ue_triggers"){
+            // Do more parsing
+            temp = split_string(values.at(1), ' ');
+            if(!parse_triggers(temp)){
+                error_on_line(line_number, line);
+                return false;
+            }
+            line_number++;
+        }else if(values.at(0) == "ue_whitelist"){
+            // Do more parsing
+            temp = split_string(values.at(1), ' ');
+            config.ue_whitelist_enabled = true;
+            if(!parse_whitelist(temp)){
+                error_on_line(line_number, line);
+                return false;
+            }
             line_number++;
         }else if(values.at(0) == "sensors"){
             if(values.at(1) == "auto"){

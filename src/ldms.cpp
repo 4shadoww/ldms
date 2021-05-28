@@ -16,101 +16,117 @@
 */
 
 #include <iostream>
-#include <string>
 #include <string.h>
-#include <thread>
+#include <cstdio>
+#include <fstream>
 #include <sys/stat.h>
-#include <unistd.h>
 
 #include "config_loader.hpp"
-#include "globals.hpp"
-#include "logging.hpp"
-
-std::vector<std::thread*> threads;
 
 inline bool switch_armed(std::string& location){
     struct stat buffer;
     return (stat(location.c_str(), &buffer) == 0);
 }
 
-bool initialise_modules(){
+std::string modules_as_string(){
+    std::string f = "";
+
     for(std::vector<std::pair<std::string, func_ptr>>::iterator it = config.modules.begin(); it != config.modules.end(); it++){
-        threads.push_back(new std::thread(*(it->second)));
+        f += it->first;
+        if(it != config.modules.end()) f += " ";
+    }
+    return f;
+}
+
+bool disarm(){
+    std::remove(config.lock_path.c_str());
+    if(switch_armed(config.lock_path)){
+        std::cerr << "error: failed to disarm ldms" << std::endl;
+        return false;
     }
 
     return true;
 }
 
-int listen_for_events(){
-    while(true){
-        std::unique_lock<std::mutex> lock(mu);
-        cond.wait(lock, []{return (triggered || crashed);});
-
-        if(crashed){
-            csyslog(LOG_ERR, "error: thread has crashed");
-            return 1;
-        }
-
-        // Check is switch armed
-        if(switch_armed(config.lock_path)){
-            // Run the command on shell
-            std::system(config.command.c_str());
-            break;
-        }
-        triggered = false;
+bool arm(){
+    std::ofstream lock(config.lock_path);
+    if(!lock.is_open()){
+        std::cerr << "error: couldn't create lock file to arm ldms" << std::endl;
+        return false;
     }
+    lock.close();
 
-    return 0;
+    return true;
 }
 
 void print_version(){
-    std::cout << "ldms 1.0" << std::endl;
+    std::cout << "ldmswitch 1.0" << std::endl;
 }
 
-void print_usage(char* arg0){
-    std::cout << "Usage: " << arg0 << " [options]\n\nOptions:\n-h, --help\t\tshow help\n-v, --version\t\tshow version\n-c, --config\t\tconfig file location" << std::endl;
+void print_usage(char* argv0){
+    std::cout << "Usage: " << argv0 << " [options...] parameter1\n\nOptions:\n-h, --help\t\tshow help\n-v, --version\t\tshow version\n-c, --config\t\tconfig file location\narm\t\t\tarm dead man's switch\ndisarm\t\t\tdisarm dead man's switch\nstatus\t\t\tcheck is switch armed" << std::endl;
 }
 
 int main(int argc, char** argv){
-    int return_status = 0;
-    std::string config_location = "/etc/ldms/ldms.conf";
-
-    open_logging();
+    std::string config_location = "/etc/ldms/ldmsd.conf";
+    int parameter1_pos = 1;
 
     // Parse arguments
-    if(argc >= 2){
-        if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0){
+    if(argc < 2){
+        print_usage(argv[0]);
+        return 1;
+    }else if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0){
+        print_usage(argv[0]);
+        return 0;
+    }else if(strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-v") == 0){
+        print_version();
+        return 0;
+    }else if(strcmp(argv[1], "--config") == 0 || strcmp(argv[1], "-c") == 0){
+        if(argc < 3){
+            std::cerr << "please give the config location" << std::endl;
+            return 1;
+        }else if(argc < 4){
             print_usage(argv[0]);
-            return 0;
-        }else if(strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-v") == 0){
-            print_version();
-            return 0;
-        }else if(strcmp(argv[1], "--config") == 0 || strcmp(argv[1], "-c") == 0){
-            if(argc < 3){
-                csyslog(LOG_ERR, "please give the config location");
-                return 1;
-            }
-            config_location = std::string(argv[2]);
+            std::cerr << std::endl << "please give the parameter1" << std::endl;
+            return 1;
         }
+        parameter1_pos = 3;
+        config_location = std::string(argv[2]);
     }
 
     // Load config
     if(!load_config(config_location)){
-        csyslog(LOG_ERR, "failed to config");
+        std::cerr << "failed to config" << std::endl;
         return 1;
     }
 
-    init_logging();
+    // Parse action
+    if(strcmp(argv[parameter1_pos], "arm") == 0){
+        if(!arm()){
+            std::cerr << "error: could not arm ldms" << std::endl;
+            return 1;
+        }
+        std::cout << "ldms is now armed and command \"" << config.command << "\" will be ran upon triggering!!!" << std::endl;
+        std::cout << "make sure ldms daemon is running!!!" << std::endl;
 
-    if(config.modules.size() == 0){
-        csyslog(LOG_ERR, "no modules defined");
+    }else if(strcmp(argv[parameter1_pos], "disarm") == 0){
+        if(!disarm()){
+            std::cerr << "error: could not disarm ldms" << std::endl;
+            return 1;
+        }
+        std::cout << "ldms is now disarmed!!!" << std::endl;
+    }else if(strcmp(argv[parameter1_pos], "status") == 0){
+        if(switch_armed(config.lock_path)){
+            std::cout << "switch is armed" << std::endl;
+            return 0;
+        }
+        std::cout << "switch is disarmed" << std::endl;
+        return 0;
+    }else{
+        std::cerr << "unknown command \"" << argv[parameter1_pos] << "\"" << std::endl;
+        print_usage(argv[0]);
         return 1;
     }
 
-    initialise_modules();
-
-    // Main loop
-    return_status = listen_for_events();
-
-    return return_status;
+    return 0;
 }

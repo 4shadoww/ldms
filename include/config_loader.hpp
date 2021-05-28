@@ -28,7 +28,7 @@ typedef int (*func_ptr)();
 
 struct ldms_config{
     std::string command = "echo \"dead man's switch triggered\"";
-    std::string lock_path = "/var/lib/ldms/armed.lck";
+    std::string lock_path = "/var/lib/ldms/switch.lck";
     std::vector<std::pair<std::string, func_ptr>> modules;
     bool logging = true;
     // Usbevents
@@ -37,10 +37,10 @@ struct ldms_config{
     bool action_remove = false;
     bool action_change = false;
     bool action_unbind = false;
-    bool usb_events_whitelist_enabled = false;
-    std::vector<std::string> usb_events_whitelist;
+    bool ue_whitelist_enabled = false;
+    std::vector<std::string> ue_whitelist;
     // lm-sensors
-    double temp_low = 20;
+    double temp_low = 15;
     int sensors_update_interval = 500;
     bool sensors_auto_configure = true;
     std::vector<std::pair<std::string, std::string>> sensors;
