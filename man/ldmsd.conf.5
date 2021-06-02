@@ -1,0 +1,117 @@
+.TH "LDMSD CONFIGURATION" 5 "2021-06-02" "1.0"
+.SH NAME
+ldmsd.conf – ldms configuration file
+
+.SH SYNOPSIS
+/etc/ldms/ldmsd.conf
+
+.SH DESCRIPTION
+This configuration file defines the behaviour of the ldms daemon.
+
+.SH OPTIONS
+Empty \fBDefault:\fR means no default value. List items are separated by space.
+
+.B GENERAL OPTIONS
+.TP
+.B command =
+.B Default:
+.I echo \[dq]dead man\'s switch triggered\[dq]
+
+Defines the command run upon triggering.
+.TP
+.B lock_path =
+.B Default:
+.I /var/lib/ldms/switch.lck
+
+Path to lock. If the lock file exists ldms daemon is armed and the command will be executed.
+.TP
+.B modules =
+.B Default:
+
+List of modules.
+.TP
+.B logging =
+.B Default:
+.I true
+
+Enables syslog.
+.PP
+.B USB EVENTS OPTIONS
+.TP
+.B ue_triggers =
+.B Default:
+
+Defines which events will trigger. The events are: add, bind, change, remove.
+.TP
+.B ue_whitelist =
+.B Default:
+
+List of bus ids that will be ignored. You can find usb devices bus ids using
+.B lsusb
+command.
+
+.PP
+.B LM SENSORS OPTIONS
+.TP
+.B sensors =
+.B Default:
+.I auto
+
+List of sensor prefixes. You may manually define sensors used or
+use auto-configuration mode which will use every sensor available.
+You can find sensor prefixes using command \fBsensors -u\fR.
+
+Example output of \fBsensors -u\fR where prefix is bolded.
+
+.EX
+.in +4n
+k10temp-pci-00c3
+Adapter: PCI adapter
+Tctl:
+  temp1_input: 35.250
+Tdie:
+  temp2_input: 35.250
+Tccd1:
+  temp3_input: 36.500
+.in
+.EE
+
+.TP
+.B temp_low =
+.B Default:
+.I 15
+
+Will trigger if sensor\'s temperature is less or equal.
+.TP
+.B sensors_update_interval =
+.B Default:
+.I 500
+
+Time to wait milliseconds after checking the temperature.
+In other words, a 500 ms delay means the temperature is checked twice per second.
+
+.PP
+.B NETWORK OPTIONS
+.TP
+.B disallow_new_interfaces =
+.B Default:
+.I true
+
+Trigger if new network interface is found.
+
+.TP
+.B network_interfaces =
+.B Default:
+
+List of network interfaces to monitor. For example, this list could have \fBeth0\fR.
+If this option is not defined, every interface will be monitored by default.
+
+.SH SEE ALSO
+.BR ldms(1)
+.BR ldmsd(1)
+
+.SH AUTHOR
+Noa-Emil Nissinen
+
+.SH BUGS
+https://gitlab.com/4shadoww/ldms
