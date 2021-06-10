@@ -32,9 +32,18 @@ install: $(LDMS_EXECUTABLE) $(SWITCH_EXECUTABLE)
 	install -m 644 ldmsd.service /usr/lib/systemd/system/
 	install -m 644 -D example.conf /var/lib/ldms/example.conf
 	install -m 644 -D example.conf /etc/ldms/ldmsd.conf
+	gzip man/ldms.1 -c > man/ldms.1.gz
+	gzip man/ldmsd.1 -c > man/ldmsd.1.gz
+	gzip man/ldmsd.conf.5 -c > man/ldmsd.conf.5.gz
+	install -m 644 man/ldms.1.gz /usr/share/man/man1/ldms.1.gz
+	install -m 644 man/ldmsd.1.gz /usr/share/man/man1/ldmsd.1.gz
+	install -m 644 man/ldmsd.conf.5.gz /usr/share/man/man5/ldmsd.conf.5.gz
 
 uninstall:
 	rm /usr/bin/$(LDMS_EXECUTABLE)
 	rm /usr/bin/$(SWITCH_EXECUTABLE)
 	rm /usr/lib/systemd/system/ldmsd.service
 	rm -rf /var/lib/ldms
+	rm /usr/share/man/man1/ldms.1.gz
+	rm /usr/share/man/man1/ldmsd.1.gz
+	rm /usr/share/man/man5/ldmsd.conf.5.gz
