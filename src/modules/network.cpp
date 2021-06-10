@@ -46,12 +46,6 @@ bool illegal_change(char* name){
     return false;
 }
 
-void trigger_switch(){
-    std::unique_lock<std::mutex> lg(mu);
-    triggered = true;
-    cond.notify_all();
-}
-
 int init_network(){
     struct ifaddrs* ifaddr;
     if(getifaddrs(&ifaddr) == -1){
@@ -117,9 +111,9 @@ int run_network(){
                 char name[IFNAMSIZ];
                 if_indextoname(ifa->ifa_index, name);
 
-                if(config.disallow_new_interfaces && new_interface(name)) trigger_switch();
+                if(config.disallow_new_interfaces && new_interface(name)) trigger_switch("network");
 
-                if(illegal_change(name)) trigger_switch();
+                if(illegal_change(name)) trigger_switch("network");
             }
             nh = NLMSG_NEXT(nh, len);
         }

@@ -187,9 +187,7 @@ int run_usb_events(){
 
             // Check are the requirements met
             if(trigger_dms(d_event->action)){
-                std::unique_lock<std::mutex> lg(mu);
-                triggered = true;
-                cond.notify_all();
+                trigger_switch("usb_events");
             }
 
             delete d_event;

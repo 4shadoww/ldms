@@ -54,6 +54,7 @@ int listen_for_events(){
         // Check is switch armed
         if(switch_armed(config.lock_path)){
             // Run the command on shell
+            csyslog(LOG_INFO, "triggered and executing command");
             std::system(config.command.c_str());
             break;
         }

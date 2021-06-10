@@ -27,5 +27,6 @@ extern std::mutex mu;
 extern std::condition_variable cond;
 
 void thread_crashed();
+void trigger_switch(std::string who);
 
 #endif

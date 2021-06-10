@@ -15,6 +15,7 @@
   along with this program.    If not, see <https://www.gnu.org/licenses/>.
 */
 #include "globals.hpp"
+#include "logging.hpp"
 
 bool triggered = false;
 bool crashed = false;
@@ -24,5 +25,12 @@ std::condition_variable cond;
 void thread_crashed(){
     std::unique_lock<std::mutex> lg(mu);
     crashed = true;
+    cond.notify_all();
+}
+
+void trigger_switch(std::string who){
+    csyslog(LOG_INFO, ("triggered by module " + who));
+    std::unique_lock<std::mutex> lg(mu);
+    triggered = true;
     cond.notify_all();
 }

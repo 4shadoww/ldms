@@ -210,9 +210,7 @@ int run_lm_sensors(){
                 }
 
                 if(value <= config.temp_low){
-                    std::unique_lock<std::mutex> lg(mu);
-                    triggered = true;
-                    cond.notify_all();
+                    trigger_switch("lm_sensors");
                 }
             }
         }
