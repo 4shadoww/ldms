@@ -44,7 +44,7 @@ uninstall:
 	rm /usr/bin/$(LDMS_EXECUTABLE)
 	rm /usr/bin/$(SWITCH_EXECUTABLE)
 	rm /usr/lib/systemd/system/ldmsd.service
-rm /usr/lib/systemd/system/ldmsd.timer
+	rm /usr/lib/systemd/system/ldmsd.timer
 	rm -rf /var/lib/ldms
 	rm /usr/share/man/man1/ldms.1.gz
 	rm /usr/share/man/man1/ldmsd.1.gz
