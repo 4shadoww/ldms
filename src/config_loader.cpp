@@ -182,11 +182,17 @@ bool load_config(std::string& location){
         if(values.at(0) == "command"){
             config.command = values.at(1);
             line_number++;
-            continue;
+        }else if(values.at(0) == "disarm_after"){
+            if(!parse_bool(values.at(1), &config.disarm_after)){
+                error_on_line(line_number, line);
+                csyslog(LOG_ERR, "error: logging value");
+                return false;
+            }
+
+            line_number++;
         }else if(values.at(0) == "lock_path"){
             config.lock_path = values.at(1);
             line_number++;
-            continue;
         }else if(values.at(0) == "modules"){
             temp = split_string(values.at(1), ' ');
             #ifdef LDMS_DAEMON

@@ -53,6 +53,13 @@ int listen_for_events(){
 
         // Check is switch armed
         if(switch_armed(config.lock_path)){
+            // Remove lock after
+            if(config.disarm_after){
+                std::remove(config.lock_path.c_str());
+                if(switch_armed(config.lock_path)){
+                    csyslog(LOG_ERR, "error: failed to disarm ldms");
+                }
+            }
             // Run the command on shell
             csyslog(LOG_INFO, "triggered and executing command");
             std::system(config.command.c_str());

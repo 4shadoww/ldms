@@ -28,6 +28,7 @@ typedef int (*func_ptr)();
 
 struct ldms_config{
     std::string command = "echo \"dead man's switch triggered\"";
+    bool disarm_after = true;
     std::string lock_path = "/var/lib/ldms/switch.lck";
     std::vector<std::pair<std::string, func_ptr>> modules;
     bool logging = true;
