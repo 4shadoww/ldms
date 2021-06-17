@@ -1,4 +1,4 @@
-.TH "LDMSD CONFIGURATION" 5 "2021-06-02" "1.0"
+.TH "LDMSD CONFIGURATION" 5 "2021-06-17" "1.0"
 .SH NAME
 ldmsd.conf – ldms configuration file
 
@@ -18,6 +18,12 @@ Empty \fBDefault:\fR means no default value. List items are separated by space.
 .I echo \[dq]dead man\'s switch triggered\[dq]
 
 Defines the command run upon triggering.
+.TP
+.B disarm_after =
+.B Default:
+.I true
+
+Disarm ldms after a triggering event. This avoids spamming commands if the command doesn\'t shut down the system but only unmounts drives.
 .TP
 .B lock_path =
 .B Default:
