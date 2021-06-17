@@ -32,7 +32,9 @@ install: $(LDMS_EXECUTABLE) $(SWITCH_EXECUTABLE)
 	install -m 644 ldmsd.service /usr/lib/systemd/system/
 	install -m 644 ldmsd.timer /usr/lib/systemd/system/
 	install -m 644 -D example.conf /var/lib/ldms/example.conf
-	install -m 644 -D example.conf /etc/ldms/ldmsd.conf
+ifeq (,$(wildcard /etc/ldms/ldmsd.conf))
+		install -m 644 -D example.conf /etc/ldms/ldmsd.conf
+endif
 	gzip man/ldms.1 -c > man/ldms.1.gz
 	gzip man/ldmsd.1 -c > man/ldmsd.1.gz
 	gzip man/ldmsd.conf.5 -c > man/ldmsd.conf.5.gz
