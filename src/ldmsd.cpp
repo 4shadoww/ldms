@@ -25,6 +25,7 @@
 #include "config_loader.hpp"
 #include "globals.hpp"
 #include "logging.hpp"
+#include "version_info.hpp"
 
 std::vector<std::thread*> threads;
 
@@ -72,7 +73,8 @@ int listen_for_events(){
 }
 
 void print_version(){
-    std::cout << "ldms 1.0" << std::endl;
+    std::cout << "ldms " << ldms_version << std::endl;
+    std::cout << "ldmsd " << ldmsd_version << std::endl;
 }
 
 void print_usage(char* arg0){

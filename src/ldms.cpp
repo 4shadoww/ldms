@@ -22,6 +22,7 @@
 #include <sys/stat.h>
 
 #include "config_loader.hpp"
+#include "version_info.hpp"
 
 inline bool switch_armed(std::string& location){
     struct stat buffer;
@@ -42,6 +43,7 @@ bool disarm(){
     std::remove(config.lock_path.c_str());
     if(switch_armed(config.lock_path)){
         std::cerr << "error: failed to disarm ldms" << std::endl;
+        std::cerr << "error: couldn't delete file \"" << config.lock_path <<  "\"" << std::endl;
         return false;
     }
 
@@ -51,7 +53,7 @@ bool disarm(){
 bool arm(){
     std::ofstream lock(config.lock_path);
     if(!lock.is_open()){
-        std::cerr << "error: couldn't create lock file to arm ldms" << std::endl;
+        std::cerr << "error: couldn't create lock file \"" << config.lock_path  << "\" to arm ldms" << std::endl;
         return false;
     }
     lock.close();
@@ -60,7 +62,8 @@ bool arm(){
 }
 
 void print_version(){
-    std::cout << "ldmswitch 1.0" << std::endl;
+    std::cout << "ldms " << ldms_version << std::endl;
+    std::cout << "ldms daemon " << ldmsd_version << std::endl;
 }
 
 void print_usage(char* argv0){
@@ -116,6 +119,7 @@ int main(int argc, char** argv){
         }
         std::cout << "ldms is now disarmed!!!" << std::endl;
     }else if(strcmp(argv[parameter1_pos], "status") == 0){
+        std::cout << "check ldms daemon status with service manager" << std::endl;
         if(switch_armed(config.lock_path)){
             std::cout << "switch is armed" << std::endl;
             return 0;
