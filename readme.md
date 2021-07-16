@@ -77,7 +77,8 @@ You can also enable the daemon, but you cannot simply enable *ldmsd.service*. Yo
     
 The timer starts the daemon after one minute. Using a timer is **very important**. Without it, the daemon will start too early and may not let the system boot correctly if it's armed.
 
-## Example script ##
+Example script
+--------------
 Here is an example shell script which could be used:
     
     #!/usr/sh
