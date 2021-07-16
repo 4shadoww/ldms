@@ -30,7 +30,47 @@
 
 #endif
 
+struct Option{
+    std::string name;
+    bool (*cmd_ptr)(std::vector<std::string>&, std::string&, int);
+};
+
+#ifdef LDMS_DAEMON
+
+struct Module{
+    std::string name;
+    int (*func_ptr)();
+};
+
+#endif
+
 ldms_config config;
+
+Option options[] = {
+{"command", &option_command},
+{"disarm_after", &option_disarm_after},
+{"lock_path", &option_lock_path},
+{"modules", &option_modules},
+{"logging", &option_logging},
+{"ue_triggers", &option_ue_triggers},
+{"ue_whitelist", &option_ue_whitelist},
+{"sensors", &option_sensors},
+{"temp_low", &option_temp_low},
+{"sensors_update_interval", &option_sensors_update_interval},
+{"disallow_new_interfaces", &option_disallow_new_interfaces},
+{"network_interfaces", &option_network_interfaces}
+};
+
+#ifdef LDMS_DAEMON
+
+Module modules[] = {
+{"usbevents", &run_usb_events},
+{"lm-sensors", &run_lm_sensors},
+{"network", &run_network},
+//{"checkin", &run_checkin}
+};
+
+#endif
 
 static inline void ltrim(std::string& s) {
     s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
@@ -118,18 +158,23 @@ bool parse_bool(std::string str, bool* val){
 
 #ifdef LDMS_DAEMON
 
-bool load_modules(std::vector<std::string>& modules){
-    for(std::vector<std::string>::iterator it = modules.begin(); it != modules.end(); it++){
-        if(*it == "usbevents"){
-            config.modules.push_back(std::pair<std::string, func_ptr>("usbevents", &run_usb_events));
-        }else if(*it == "lm-sensors"){
-            config.modules.push_back(std::pair<std::string, func_ptr>("lm-sensors", &run_lm_sensors));
-        }else if(*it == "network"){
-            config.modules.push_back(std::pair<std::string, func_ptr>("network", &run_network));
-        }else{
-            csyslog(LOG_ERR, ("error: unknown module \"" + *it + "\""));
-            return false;
+bool load_modules(std::vector<std::string>& modules_list){
+    const unsigned int modules_size = (sizeof(modules) / sizeof(Module));
+
+    for(std::vector<std::string>::iterator it = modules_list.begin(); it != modules_list.end(); it++){
+        bool found = false;
+
+        for(unsigned int i = 0; i < modules_size; i++){
+            if(*it == modules[i].name){
+                found = true;
+                config.modules.push_back(std::pair<std::string, func_ptr>(modules[i].name, modules[i].func_ptr));
+            }
         }
+
+        if(found) continue;
+
+        csyslog(LOG_ERR, ("error: unknown module \"" + *it + "\""));
+        return false;
     }
 
     return true;
@@ -139,6 +184,131 @@ bool load_modules(std::vector<std::string>& modules){
 
 void error_on_line(int line_number, std::string line){
     csyslog(LOG_ERR, ("error on line " + std::to_string(line_number) + ": " + line));
+}
+
+bool option_command(std::vector<std::string>& values, std::string& line, int line_number){
+    config.command = values.at(1);
+    return true;
+}
+
+bool option_disarm_after(std::vector<std::string>& values, std::string& line, int line_number){
+    if(!parse_bool(values.at(1), &config.disarm_after)){
+        error_on_line(line_number, line);
+        csyslog(LOG_ERR, "error: logging value");
+        return false;
+    }
+
+    return true;
+}
+
+bool option_lock_path(std::vector<std::string>& values, std::string& line, int line_number){
+     config.lock_path = values.at(1);
+    return true;
+}
+
+bool option_modules(std::vector<std::string>& values, std::string& line, int line_number){
+#ifdef LDMS_DAEMON
+    std::vector<std::string> temp = split_string(values.at(1), ' ');
+    if(!load_modules(temp)){
+        error_on_line(line_number, line);
+        return false;
+    }
+#endif
+
+    return true;
+}
+
+bool option_logging(std::vector<std::string>& values, std::string& line, int line_number){
+    if(!parse_bool(values.at(1), &config.disallow_new_interfaces)){
+        error_on_line(line_number, line);
+        csyslog(LOG_ERR, "error: logging value");
+        return false;
+    }
+
+    return true;
+}
+
+bool option_ue_triggers(std::vector<std::string>& values, std::string& line, int line_number){
+    // Do more parsing
+    std::vector<std::string> temp = split_string(values.at(1), ' ');
+    if(!parse_triggers(temp)){
+        error_on_line(line_number, line);
+        return false;
+    }
+
+    return true;
+}
+
+bool option_ue_whitelist(std::vector<std::string>& values, std::string& line, int line_number){
+    // Do more parsing
+    std::vector<std::string> temp = split_string(values.at(1), ' ');
+    config.ue_whitelist_enabled = true;
+    if(!parse_whitelist(temp)){
+        error_on_line(line_number, line);
+        return false;
+    }
+
+    return true;
+}
+
+bool option_sensors(std::vector<std::string>& values, std::string& line, int line_number){
+    if(values.at(1) == "auto"){
+        config.sensors_auto_configure = true;
+        return true;
+    }
+    config.sensors_auto_configure = false;
+    std::vector<std::string> temp = split_string(values.at(1), ' ');
+    if(!parse_sensors(temp)){
+        error_on_line(line_number, line);
+        return false;
+    }
+
+    return true;
+}
+
+bool option_temp_low(std::vector<std::string>& values, std::string& line, int line_number){
+    try{
+        config.temp_low = std::stod(values.at(1));
+    }catch(const std::invalid_argument& ia){
+        error_on_line(line_number, line);
+        csyslog(LOG_ERR, "error: invalid low_temp value");
+        return false;
+    }
+
+    return true;
+}
+
+bool option_sensors_update_interval(std::vector<std::string>& values, std::string& line, int line_number){
+    try{
+        config.sensors_update_interval = std::stoi(values.at(1));
+    }catch(const std::invalid_argument& ia){
+        error_on_line(line_number, line);
+        csyslog(LOG_ERR, "error: invalid sensors_update_interval value");
+        return false;
+    }
+
+    return true;
+}
+
+bool option_disallow_new_interfaces(std::vector<std::string>& values, std::string& line, int line_number){
+    if(!parse_bool(values.at(1), &config.disallow_new_interfaces)){
+        error_on_line(line_number, line);
+        csyslog(LOG_ERR, "error: disallow_new_interfaces value");
+        return false;
+    }
+
+    return true;
+}
+
+bool option_network_interfaces(std::vector<std::string>& values, std::string& line, int line_number){
+    std::vector<std::string> temp = split_string(values.at(1), ' ');
+    if(temp.size() < 1){
+        error_on_line(line_number, line);
+        return false;
+    }
+    config.network_interfaces = temp;
+
+    return true;
 }
 
 bool load_config(std::string& location){
@@ -179,107 +349,25 @@ bool load_config(std::string& location){
             return false;
         }
 
-        if(values.at(0) == "command"){
-            config.command = values.at(1);
-            line_number++;
-        }else if(values.at(0) == "disarm_after"){
-            if(!parse_bool(values.at(1), &config.disarm_after)){
-                error_on_line(line_number, line);
-                csyslog(LOG_ERR, "error: logging value");
-                return false;
+        bool found = false;
+        const unsigned int options_size = (sizeof(options) / sizeof(Option));
+        for(unsigned int i = 0; i < options_size; i++){
+            if(values.at(0) == options[i].name){
+                found = true;
+                options[i].cmd_ptr(values, line, line_number);
+                break;
             }
-
-            line_number++;
-        }else if(values.at(0) == "lock_path"){
-            config.lock_path = values.at(1);
-            line_number++;
-        }else if(values.at(0) == "modules"){
-            temp = split_string(values.at(1), ' ');
-            #ifdef LDMS_DAEMON
-            if(!load_modules(temp)){
-                error_on_line(line_number, line);
-                return false;
-            }
-            #endif
-            line_number++;
-        }else if(values.at(0) == "logging"){
-            if(!parse_bool(values.at(1), &config.disallow_new_interfaces)){
-                error_on_line(line_number, line);
-                csyslog(LOG_ERR, "error: logging value");
-                return false;
-            }
-
-            line_number++;
-        }else if(values.at(0) == "ue_triggers"){
-            // Do more parsing
-            temp = split_string(values.at(1), ' ');
-            if(!parse_triggers(temp)){
-                error_on_line(line_number, line);
-                return false;
-            }
-            line_number++;
-        }else if(values.at(0) == "ue_whitelist"){
-            // Do more parsing
-            temp = split_string(values.at(1), ' ');
-            config.ue_whitelist_enabled = true;
-            if(!parse_whitelist(temp)){
-                error_on_line(line_number, line);
-                return false;
-            }
-            line_number++;
-        }else if(values.at(0) == "sensors"){
-            if(values.at(1) == "auto"){
-                config.sensors_auto_configure = true;
-                line_number++;
-                continue;
-            }
-            config.sensors_auto_configure = false;
-            temp = split_string(values.at(1), ' ');
-            if(!parse_sensors(temp)){
-                error_on_line(line_number, line);
-                return false;
-            }
-            line_number++;
-        }else if(values.at(0) == "temp_low"){
-            try{
-                config.temp_low = std::stod(values.at(1));
-            }catch(const std::invalid_argument& ia){
-                error_on_line(line_number, line);
-                csyslog(LOG_ERR, "error: invalid low_temp value");
-                return false;
-            }
-            line_number++;
-        }else if(values.at(0) == "sensors_update_interval"){
-            try{
-                config.sensors_update_interval = std::stoi(values.at(1));
-            }catch(const std::invalid_argument& ia){
-                error_on_line(line_number, line);
-                csyslog(LOG_ERR, "error: invalid sensors_update_interval value");
-                return false;
-            }
-            line_number++;
-        }else if(values.at(0) == "disallow_new_interfaces"){
-            if(!parse_bool(values.at(1), &config.disallow_new_interfaces)){
-                error_on_line(line_number, line);
-                csyslog(LOG_ERR, "error: disallow_new_interfaces value");
-                return false;
-            }
-
-           line_number++;
-        }else if(values.at(0) == "network_interfaces"){
-            temp = split_string(values.at(1), ' ');
-            if(temp.size() < 1){
-                error_on_line(line_number, line);
-                return false;
-            }
-            config.network_interfaces = temp;
-            line_number++;
-
-        }else{
-            error_on_line(line_number, line);
-            csyslog(LOG_ERR, ("error: invalid option \"" + values.at(0) + "\""));
-            return false;
         }
+
+        if(found){
+            line_number++;
+            continue;
+        }
+
+        error_on_line(line_number, line);
+        csyslog(LOG_ERR, ("error: invalid option \"" + values.at(0) + "\""));
+        return false;
+
     }
 
     reader.close();

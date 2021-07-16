@@ -26,6 +26,20 @@
 
 typedef int (*func_ptr)();
 
+bool option_command(std::vector<std::string>& values, std::string& line, int line_number);
+bool option_disarm_after(std::vector<std::string>& values, std::string& line, int line_number);
+bool option_lock_path(std::vector<std::string>& values, std::string& line, int line_number);
+bool option_modules(std::vector<std::string>& values, std::string& line, int line_number);
+bool option_logging(std::vector<std::string>& values, std::string& line, int line_number);
+bool option_ue_triggers(std::vector<std::string>& values, std::string& line, int line_number);
+bool option_ue_whitelist(std::vector<std::string>& values, std::string& line, int line_number);
+bool option_sensors(std::vector<std::string>& values, std::string& line, int line_number);
+bool option_temp_low(std::vector<std::string>& values, std::string& line, int line_number);
+bool option_sensors_update_interval(std::vector<std::string>& values, std::string& line, int line_number);
+bool option_disallow_new_interfaces(std::vector<std::string>& values, std::string& line, int line_number);
+bool option_network_interfaces(std::vector<std::string>& values, std::string& line, int line_number);
+
+
 struct ldms_config{
     std::string command = "echo \"dead man's switch triggered\"";
     bool disarm_after = true;
