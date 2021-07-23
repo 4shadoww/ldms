@@ -43,7 +43,7 @@ char* generate_salt(size_t size){
     salt[1] = '5'; /* SHA-256 */
     salt[2] = '$';
 
-    int i = 0;
+    unsigned int i = 0;
 
     for(i = 0; i < size; i++){
         salt[3+i] = saltchars[ubytes[i] & 0x3f];

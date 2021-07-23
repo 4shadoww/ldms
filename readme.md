@@ -40,6 +40,15 @@ There is also uninstall target to uninstall the program. By default, config file
 
 **Important** be aware currently the install target will install systemd unit files. So if you are running some other init system, then obviously you don't want to install those.
 
+Compiling without lm-sensors module
+-----------------------------------
+
+If you don't need or want the lm-sensors module, you can make a build without it by defining a "NO_LMSENSORS" macro:
+
+    make debug -j 4 CFLAGS=-DNO_LMSENSORS
+    g++ -DNO_LMSENSORS -DLDMS_DAEMON  -Iinclude -pthread -lsensors src/ldmsd.cpp  src/config_loader.cpp         src/globals.cpp src/logging.cpp src/modules/usb_events.cpp src/modules/lm_sensors.cpp src/modules/network.cpp src/modules/checkin.cpp -o ldmsd
+    g++ -DNO_LMSENSORS -Iinclude -pthread -lsensors src/ldms.cpp src/config_loader.cpp src/globals.cpp  src/logging.cpp -o ldms
+
 Configuration
 =============
 The configuration file is located at */etc/ldms/ldmsd.conf*. Config file has comments but they don't have explanations. It's recommended to read man page ldmsd.conf(5).

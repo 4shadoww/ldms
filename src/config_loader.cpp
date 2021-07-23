@@ -25,8 +25,12 @@
 #ifdef LDMS_DAEMON
 
 #include "modules/usb_events.hpp"
-#include "modules/lm_sensors.hpp"
 #include "modules/network.hpp"
+#include "modules/checkin.hpp"
+
+#ifndef NO_LMSENSORS
+#include "modules/lm_sensors.hpp"
+#endif
 
 #endif
 
@@ -65,9 +69,11 @@ Option options[] = {
 
 Module modules[] = {
 {"usbevents", &run_usb_events},
-{"lm-sensors", &run_lm_sensors},
 {"network", &run_network},
-//{"checkin", &run_checkin}
+{"checkin", &run_checkin},
+#ifndef NO_LMSENSORS
+{"lm-sensors", &run_lm_sensors}
+#endif
 };
 
 #endif
@@ -354,7 +360,9 @@ bool load_config(std::string& location){
         for(unsigned int i = 0; i < options_size; i++){
             if(values.at(0) == options[i].name){
                 found = true;
-                options[i].cmd_ptr(values, line, line_number);
+                if(!options[i].cmd_ptr(values, line, line_number)){
+                    return false;
+                }
                 break;
             }
         }
