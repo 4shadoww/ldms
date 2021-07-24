@@ -62,7 +62,9 @@ Option options[] = {
 {"temp_low", &option_temp_low},
 {"sensors_update_interval", &option_sensors_update_interval},
 {"disallow_new_interfaces", &option_disallow_new_interfaces},
-{"network_interfaces", &option_network_interfaces}
+{"network_interfaces", &option_network_interfaces},
+{"checkin_interval", &option_checkin_interval},
+{"pwdhash_path", &option_pwdhash_path}
 };
 
 #ifdef LDMS_DAEMON
@@ -208,7 +210,7 @@ bool option_disarm_after(std::vector<std::string>& values, std::string& line, in
 }
 
 bool option_lock_path(std::vector<std::string>& values, std::string& line, int line_number){
-     config.lock_path = values.at(1);
+    config.lock_path = values.at(1);
     return true;
 }
 
@@ -314,6 +316,23 @@ bool option_network_interfaces(std::vector<std::string>& values, std::string& li
     }
     config.network_interfaces = temp;
 
+    return true;
+}
+
+bool option_checkin_interval(std::vector<std::string>& values, std::string& line, int line_number){
+    try{
+        config.checkin_interval = std::stod(values.at(1));
+    }catch(const std::invalid_argument& ia){
+        error_on_line(line_number, line);
+        csyslog(LOG_ERR, "error: invalid checkin_interval value");
+        return false;
+    }
+
+    return true;
+}
+
+bool option_pwdhash_path(std::vector<std::string>& values, std::string& line, int line_number){
+    config.lock_path = values.at(1);
     return true;
 }
 

@@ -38,6 +38,8 @@ bool option_temp_low(std::vector<std::string>& values, std::string& line, int li
 bool option_sensors_update_interval(std::vector<std::string>& values, std::string& line, int line_number);
 bool option_disallow_new_interfaces(std::vector<std::string>& values, std::string& line, int line_number);
 bool option_network_interfaces(std::vector<std::string>& values, std::string& line, int line_number);
+bool option_checkin_interval(std::vector<std::string>& values, std::string& line, int line_number);
+bool option_pwdhash_path(std::vector<std::string>& values, std::string& line, int line_number);
 
 
 struct ldms_config{
@@ -62,6 +64,9 @@ struct ldms_config{
     // Network
     std::vector<std::string> network_interfaces;
     bool disallow_new_interfaces = true;
+    // Checkin
+    float checkin_interval = 24;
+    std::string pwdhash_path = "/usr/lib/ldms/pwdhash";
 };
 
 extern ldms_config config;
