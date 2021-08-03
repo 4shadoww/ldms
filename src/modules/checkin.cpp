@@ -17,11 +17,17 @@
 
 #include <crypt.h>
 #include <unistd.h>
+#include <string>
+#include <sys/stat.h>
 
 #include "modules/checkin.hpp"
 
-char* generate_salt(size_t size){
+inline bool pwdhash_exists(std::string& location){
+    struct stat buffer;
+    return (stat(location.c_str(), &buffer) == 0);
+}
 
+char* generate_salt(size_t size){
     if(size < 10){
         return nullptr;
     }
