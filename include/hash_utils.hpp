@@ -15,23 +15,12 @@
   along with this program.    If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "globals.hpp"
-#include "logging.hpp"
+#ifndef LDMS_HASH_UTILS_HPP
+#define LDMS_HASH_UTILS_HPP
 
-bool triggered = false;
-bool crashed = false;
-std::mutex mu;
-std::condition_variable cond;
+#include <unistd.h>
 
-void thread_crashed(){
-    std::unique_lock<std::mutex> lg(mu);
-    crashed = true;
-    cond.notify_all();
-}
+char* generate_salt(size_t size);
 
-void trigger_switch(std::string who){
-    csyslog(LOG_INFO, ("triggered by module " + who));
-    std::unique_lock<std::mutex> lg(mu);
-    triggered = true;
-    cond.notify_all();
-}
+
+#endif

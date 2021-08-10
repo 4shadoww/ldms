@@ -15,54 +15,84 @@
   along with this program.    If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <crypt.h>
-#include <unistd.h>
 #include <string>
 #include <sys/stat.h>
+#include <unistd.h>
+#include <fstream>
 
 #include "modules/checkin.hpp"
+#include "config_loader.hpp"
+#include "logging.hpp"
+#include "globals.hpp"
+
+std::string hash;
 
 inline bool pwdhash_exists(std::string& location){
     struct stat buffer;
     return (stat(location.c_str(), &buffer) == 0);
 }
 
-char* generate_salt(size_t size){
-    if(size < 10){
-        return nullptr;
+void wait_until_exists(std::string& location){
+    // Busy wait until file is created
+    while(true){
+        usleep(5e6);
+        if(pwdhash_exists(location)) break;
     }
 
-    const char *const saltchars =
-        "./0123456789ABCDEFGHIJKLMNOPQRST"
-        "UVWXYZabcdefghijklmnopqrstuvwxyz";
+    csyslog(LOG_INFO, "hash found from \"" + location + "\"");
 
-    unsigned char* ubytes = new unsigned char[size];
-    char* salt = new char[size + 4];
+}
 
-    if(getentropy(ubytes, size)){
-        delete[] ubytes;
-        delete[] salt;
-        return nullptr;
+bool read_clear_hashfile(std::string& location, bool init){
+    std::fstream hash_file(location);
+    std::string hash_str;
+    std::string salt;
+
+    if(!hash_file.is_open()){
+        csyslog(LOG_ERR, "checkin module could not open hash file");
+        return false;
     }
 
-    salt[0] = '$';
-    salt[1] = '5'; /* SHA-256 */
-    salt[2] = '$';
-
-    unsigned int i = 0;
-
-    for(i = 0; i < size; i++){
-        salt[3+i] = saltchars[ubytes[i] & 0x3f];
+    std::string line;
+    int line_num = 0;
+    bool got_hash = false;
+    while(getline(hash_file, line)){
+        switch(line_num){
+            case 0:
+                salt = line;
+                break;
+            case 1:
+                hash_str = line;
+                got_hash = false;
+                break;
+            default:
+                csyslog(LOG_ERR, "hash file is invalid");
+                return false;
+        }
     }
-    salt[3+i] = '\0';
 
-    delete[] ubytes;
+    if(init){
 
-    return salt;
+    }
+
+
+    chmod(location.c_str(), S_IRUSR|S_IWUSR);
+
+    return true;
 }
 
 int run_checkin(){
 
+    if(!pwdhash_exists(config.pwdhash_path)){
+        csyslog(LOG_INFO, "pwdhash not found waiting until created");
+        wait_until_exists(config.pwdhash_path);
+    }
+
+    if(!read_clear_hashfile(config.pwdhash_path, false)){
+        csyslog(LOG_ERR, "checkin module couldn't read hash or clear it");
+        thread_crashed();
+        return 1;
+    }
 
     return 0;
 }
