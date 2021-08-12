@@ -20,11 +20,13 @@
 #include <cstdio>
 #include <fstream>
 #include <sys/stat.h>
+#include <termios.h>
 
 #include "config_loader.hpp"
 #include "version_info.hpp"
+#include "hash_utils.hpp"
 
-inline bool switch_armed(std::string& location){
+inline bool file_exists(std::string& location){
     struct stat buffer;
     return (stat(location.c_str(), &buffer) == 0);
 }
@@ -41,7 +43,7 @@ std::string modules_as_string(){
 
 bool disarm(){
     std::remove(config.lock_path.c_str());
-    if(switch_armed(config.lock_path)){
+    if(file_exists(config.lock_path)){
         std::cerr << "error: failed to disarm ldms" << std::endl;
         std::cerr << "error: couldn't delete file \"" << config.lock_path <<  "\"" << std::endl;
         return false;
@@ -61,13 +63,180 @@ bool arm(){
     return true;
 }
 
+bool read_checkin_timestamp(std::string& location){
+    std::ifstream timestamp_file(location);
+
+    if(!timestamp_file.is_open()){
+        std::cerr << "could not open timestamp file" << std::endl;
+        return false;
+    }
+
+    std::string time_now;
+    std::string time_next;
+    std::string line;
+    int line_num = 0;
+    while(getline(timestamp_file, line)){
+        switch(line_num){
+            case 0:
+                time_now = line;
+                break;
+            case 1:
+                time_next = line;
+                break;
+            default:
+                std::cerr << "error: timestamp file may be corrupted" << std::endl;
+                goto endloop;
+        }
+        line_num++;
+    }
+endloop:
+    timestamp_file.close();
+
+    std::cout << "last hash check: " << time_now << std::endl;
+    std::cout << "next hash check: " << time_next << std::endl;
+
+    return true;
+}
+
+int getch(){
+    int ch;
+    struct termios t_old, t_new;
+
+    tcgetattr(STDIN_FILENO, &t_old);
+    t_new = t_old;
+    t_new.c_lflag &= ~(ICANON | ECHO);
+    tcsetattr(STDIN_FILENO, TCSANOW, &t_new);
+
+    ch = getchar();
+
+    tcsetattr(STDIN_FILENO, TCSANOW, &t_old);
+    return ch;
+}
+
+
+
+
+
+std::string getpass(const char *prompt, bool show_asterisk){
+    const char BACKSPACE=127;
+    const char RETURN=10;
+
+    std::string password;
+    unsigned char ch=0;
+
+    std::cout << prompt;
+
+    while((ch=getch()) != RETURN){
+        if(ch==BACKSPACE){
+            if(password.length() != 0){
+                if(show_asterisk) std::cout << "\b \b";
+                password.resize(password.length() - 1);
+            }
+        }else{
+             password += ch;
+             if(show_asterisk) std::cout <<'*';
+        }
+    }
+    std::cout << std::endl;
+    return password;
+}
+
+
+bool auth_hash(std::string& location){
+    std::fstream hash_file;
+    std::string salt;
+    std::string hash;
+    bool got_salt = false;
+    bool generate_new_salt = true;
+
+    if(file_exists(config.pwdhash_path)){
+        hash_file.open(location, std::fstream::in);
+        std::string line;
+
+        while(getline(hash_file, line)){
+            salt = line;
+            break;
+        }
+        if(salt.length() > 0 && salt != " " && salt != "\n"){
+            got_salt = true;
+        }
+
+        hash_file.close();
+
+    }
+
+    if(got_salt){
+        std::string answer;
+        while(true){
+            std::cout << "do you want to use existing salt or generate new? [y/N] ";
+            getline(std::cin, answer);
+
+            if(answer == ""){
+                generate_new_salt = false;
+                break;
+            }else if(answer == "n" || answer == "N"){
+                generate_new_salt = false;
+                break;
+            }else if(answer == "y" || answer == "Y"){
+                generate_new_salt = true;
+                break;
+            }else{
+                std::cout << "please enter y or n" << std::endl;
+            }
+        }
+    }
+
+    if(generate_new_salt){
+        salt = generate_salt(16);
+    }
+
+    std::string pwd = getpass("password: ", false);
+
+    hash = crypt(salt.c_str(), pwd.c_str());
+
+    hash_file.open(location, std::fstream::trunc | std::fstream::out);
+
+    if(!hash_file.is_open()){
+        std::cerr << "could not write to hash file \"" << location << "\"" << std::endl;
+        return false;
+    }
+
+    hash_file << salt << "\n" << hash;
+
+    hash_file.close();
+
+    chmod(location.c_str(), S_IRUSR|S_IWUSR);
+
+    return true;
+}
+
+bool checkin_module(char* command){
+    if(strcmp(command, "status") == 0){
+        if(!read_checkin_timestamp(config.checkin_timestamp_path)){
+            std::cerr << "failed to read timestamp" << std::endl;
+            return false;
+        }
+    }else if(strcmp(command, "auth") == 0){
+        if(!auth_hash(config.pwdhash_path)){
+            std::cerr << "failed to create hash" << std::endl;
+            return false;
+        }
+        std::cout << "hash updated" << std::endl;
+    }else{
+        std::cerr << "error: unknown option" << std::endl;
+        return false;
+    }
+
+    return true;
+}
+
 void print_version(){
     std::cout << "ldms " << ldms_version << std::endl;
     std::cout << "ldms daemon " << ldmsd_version << std::endl;
 }
 
 void print_usage(char* argv0){
-    std::cout << "Usage: " << argv0 << " [options...] parameter1\n\nOptions:\n-h, --help\t\tshow help\n-v, --version\t\tshow version\n-c, --config\t\tconfig file location\narm\t\t\tarm dead man's switch\ndisarm\t\t\tdisarm dead man's switch\nstatus\t\t\tcheck is switch armed" << std::endl;
+    std::cout << "Usage: " << argv0 << " [options...] parameter1\n\nOptions:\n-h, --help\t\tshow help\n-v, --version\t\tshow version\n-c, --config\t\tconfig file location\narm\t\t\tarm dead man's switch\ndisarm\t\t\tdisarm dead man's switch\nstatus\t\t\tcheck is switch armed\ncheckin [auth|status]\tcheckin module commands" << std::endl;
 }
 
 int main(int argc, char** argv){
@@ -120,11 +289,21 @@ int main(int argc, char** argv){
         std::cout << "ldms is now disarmed!!!" << std::endl;
     }else if(strcmp(argv[parameter1_pos], "status") == 0){
         std::cout << "check ldms daemon status with service manager" << std::endl;
-        if(switch_armed(config.lock_path)){
+        if(file_exists(config.lock_path)){
             std::cout << "switch is armed" << std::endl;
             return 0;
         }
         std::cout << "switch is disarmed" << std::endl;
+        return 0;
+    }else if(strcmp(argv[parameter1_pos], "checkin") == 0){
+        if(argc - parameter1_pos < 2){
+            std::cerr << "error: too few arguments" << std::endl;
+            print_usage(argv[0]);
+            return 1;
+        }
+
+        checkin_module(argv[parameter1_pos + 1]);
+
         return 0;
     }else{
         std::cerr << "unknown command \"" << argv[parameter1_pos] << "\"" << std::endl;
