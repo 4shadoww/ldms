@@ -29,6 +29,8 @@
 #include "globals.hpp"
 
 std::string hash;
+std::string hash_str;
+std::string salt;
 
 inline bool pwdhash_exists(std::string& location){
     struct stat buffer;
@@ -46,10 +48,8 @@ void wait_until_exists(std::string& location){
 
 }
 
-bool read_clear_hashfile(std::string& location, bool init){
+bool read_hash(std::string& location){
     std::fstream hash_file(location);
-    std::string salt;
-    std::string hash_str;
 
     if(!hash_file.is_open()){
         csyslog(LOG_ERR, "checkin module could not open hash file");
@@ -58,7 +58,6 @@ bool read_clear_hashfile(std::string& location, bool init){
 
     std::string line;
     int line_num = 0;
-    bool got_hash = false;
     while(getline(hash_file, line)){
         switch(line_num){
             case 0:
@@ -66,7 +65,6 @@ bool read_clear_hashfile(std::string& location, bool init){
                 break;
             case 1:
                 hash_str = line;
-                got_hash = true;
                 break;
             default:
                 csyslog(LOG_ERR, "hash file is invalid");
@@ -76,11 +74,17 @@ bool read_clear_hashfile(std::string& location, bool init){
     }
 
     hash_file.close();
-    if(!got_hash) csyslog(LOG_ERR, "hash file is corrupted.\ncreate new hash with ldms client.");
-    else if(init && hash_str != hash) return false;
-    else if(!init) hash = hash_str;
 
-    hash_file.open(location, std::fstream::trunc | std::fstream::out);
+    return true;
+}
+
+bool clear_hash(std::string& location){
+    std::fstream hash_file(location, std::fstream::trunc | std::fstream::out);
+
+    if(!hash_file.is_open()){
+        csyslog(LOG_ERR, "checkin module could not open hash file");
+        return false;
+    }
 
     hash_file << salt << "\n" << std::string(hash_str.length(), '0');
 
@@ -116,34 +120,73 @@ bool write_timestamp(std::string& location){
 }
 
 bool got_valid_hash(){
-    if(hash == "" || hash == "\n" || hash == " ") return false;
+    bool found_char = false;
+
+    for(unsigned int i = 0; i < hash.length(); i++){
+        if(hash[i] != ' ' && hash[i] != '0' && hash[i] != '\n'){
+            found_char = true;
+            break;
+        }
+    }
+
+    return found_char;
+}
+
+void wait_until_valid_hash(std::string& location){
+    while(true){
+        usleep(5e6);
+        if(!read_hash(location)){
+            csyslog(LOG_ERR, "checkin module couldn't read hash or clear it");
+            thread_crashed();
+        }
+        hash = hash_str;
+        if(got_valid_hash()){
+            csyslog(LOG_INFO, "valid hash found");
+            break;
+        }
+        csyslog(LOG_INFO, "hash \"" + hash + "\" doesn't seem to be valid");
+    }
 }
 
 int run_checkin(){
+    // Initialisation
     if(!pwdhash_exists(config.pwdhash_path)){
         csyslog(LOG_INFO, "pwdhash not found waiting until created");
         wait_until_exists(config.pwdhash_path);
     }
 
-    if(!read_clear_hashfile(config.pwdhash_path, false)){
-        csyslog(LOG_ERR, "checkin module couldn't read hash or clear it");
+    if(!read_hash(config.pwdhash_path)){
+        csyslog(LOG_ERR, "checkin module couldn't read hash");
         thread_crashed();
         return 1;
     }
-    if(!got_valid_hash()){
 
+    hash = hash_str;
+
+    if(!got_valid_hash()){
+        csyslog(LOG_ERR, "hash appears to be invalid.\nwaiting for valid hash...");
+        // TODO Do this properly
+        wait_until_valid_hash(config.pwdhash_path);
+    }
+
+    if(!clear_hash(config.pwdhash_path)){
+        csyslog(LOG_ERR, "checkin module could not clear hash");
+        thread_crashed();
+        return 1;
     }
 
     write_timestamp(config.checkin_timestamp_path);
+
     // Busy wait for next check
     while(true){
         usleep(config.checkin_interval_hours * 36e8 + config.checkin_interval_minutes * 6e7);
         csyslog(LOG_INFO, "checking pwdhash...");
-        if(!read_clear_hashfile(config.pwdhash_path, true)){
+        if(!read_hash(config.pwdhash_path) || !clear_hash(config.pwdhash_path) || hash != hash_str){
             trigger_switch("checkin");
+        }else{
+            csyslog(LOG_INFO, "user is authorised");
         }
         write_timestamp(config.checkin_timestamp_path);
-        csyslog(LOG_INFO, "user is authorised");
     }
 
     return 0;
