@@ -15,8 +15,6 @@
   along with this program.    If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <crypt.h>
-
 #include "hash_utils.hpp"
 
 char* generate_salt(size_t size){

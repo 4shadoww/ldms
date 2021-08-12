@@ -63,8 +63,10 @@ Option options[] = {
 {"sensors_update_interval", &option_sensors_update_interval},
 {"disallow_new_interfaces", &option_disallow_new_interfaces},
 {"network_interfaces", &option_network_interfaces},
-{"checkin_interval", &option_checkin_interval},
-{"pwdhash_path", &option_pwdhash_path}
+{"checkin_interval_hours", &option_checkin_interval_hours},
+{"checkin_interval_minutes", &option_checkin_interval_minutes},
+{"pwdhash_path", &option_pwdhash_path},
+{"checkin_timestamp_path", &option_checkin_timestamp_path}
 };
 
 #ifdef LDMS_DAEMON
@@ -319,12 +321,24 @@ bool option_network_interfaces(std::vector<std::string>& values, std::string& li
     return true;
 }
 
-bool option_checkin_interval(std::vector<std::string>& values, std::string& line, int line_number){
+bool option_checkin_interval_hours(std::vector<std::string>& values, std::string& line, int line_number){
     try{
-        config.checkin_interval = std::stod(values.at(1));
+        config.checkin_interval_hours = std::stoi(values.at(1));
     }catch(const std::invalid_argument& ia){
         error_on_line(line_number, line);
-        csyslog(LOG_ERR, "error: invalid checkin_interval value");
+        csyslog(LOG_ERR, "error: invalid checkin_interval_hours value");
+        return false;
+    }
+
+    return true;
+}
+
+bool option_checkin_interval_minutes(std::vector<std::string>& values, std::string& line, int line_number){
+    try{
+        config.checkin_interval_minutes = std::stoi(values.at(1));
+    }catch(const std::invalid_argument& ia){
+        error_on_line(line_number, line);
+        csyslog(LOG_ERR, "error: invalid checkin_interval_minutes value");
         return false;
     }
 
@@ -332,9 +346,15 @@ bool option_checkin_interval(std::vector<std::string>& values, std::string& line
 }
 
 bool option_pwdhash_path(std::vector<std::string>& values, std::string& line, int line_number){
-    config.lock_path = values.at(1);
+    config.pwdhash_path = values.at(1);
     return true;
 }
+
+bool option_checkin_timestamp_path(std::vector<std::string>& values, std::string& line, int line_number){
+    config.checkin_timestamp_path = values.at(1);
+    return true;
+}
+
 
 bool load_config(std::string& location){
     std::ifstream reader;

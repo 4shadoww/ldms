@@ -19,6 +19,7 @@
 #define LDMS_HASH_UTILS_HPP
 
 #include <unistd.h>
+#include <crypt.h>
 
 char* generate_salt(size_t size);
 

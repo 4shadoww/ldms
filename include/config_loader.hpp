@@ -38,8 +38,10 @@ bool option_temp_low(std::vector<std::string>& values, std::string& line, int li
 bool option_sensors_update_interval(std::vector<std::string>& values, std::string& line, int line_number);
 bool option_disallow_new_interfaces(std::vector<std::string>& values, std::string& line, int line_number);
 bool option_network_interfaces(std::vector<std::string>& values, std::string& line, int line_number);
-bool option_checkin_interval(std::vector<std::string>& values, std::string& line, int line_number);
+bool option_checkin_interval_hours(std::vector<std::string>& values, std::string& line, int line_number);
+bool option_checkin_interval_minutes(std::vector<std::string>& values, std::string& line, int line_number);
 bool option_pwdhash_path(std::vector<std::string>& values, std::string& line, int line_number);
+bool option_checkin_timestamp_path(std::vector<std::string>& values, std::string& line, int line_number);
 
 
 struct ldms_config{
@@ -65,8 +67,10 @@ struct ldms_config{
     std::vector<std::string> network_interfaces;
     bool disallow_new_interfaces = true;
     // Checkin
-    float checkin_interval = 24;
-    std::string pwdhash_path = "/usr/lib/ldms/pwdhash";
+    int checkin_interval_hours = 24;
+    int checkin_interval_minutes = 0;
+    std::string pwdhash_path = "/var/usr/lib/ldms/pwdhash";
+    std::string checkin_timestamp_path = "/var/usr/lib/ldms/pwdtimestamp";
 };
 
 extern ldms_config config;

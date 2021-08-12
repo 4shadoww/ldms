@@ -19,6 +19,9 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fstream>
+#include <chrono>
+#include <sstream>
+#include <iomanip>
 
 #include "modules/checkin.hpp"
 #include "config_loader.hpp"
@@ -45,8 +48,8 @@ void wait_until_exists(std::string& location){
 
 bool read_clear_hashfile(std::string& location, bool init){
     std::fstream hash_file(location);
-    std::string hash_str;
     std::string salt;
+    std::string hash_str;
 
     if(!hash_file.is_open()){
         csyslog(LOG_ERR, "checkin module could not open hash file");
@@ -63,26 +66,60 @@ bool read_clear_hashfile(std::string& location, bool init){
                 break;
             case 1:
                 hash_str = line;
-                got_hash = false;
+                got_hash = true;
                 break;
             default:
                 csyslog(LOG_ERR, "hash file is invalid");
                 return false;
         }
+        line_num++;
     }
 
-    if(init){
+    hash_file.close();
+    if(!got_hash) csyslog(LOG_ERR, "hash file is corrupted.\ncreate new hash with ldms client.");
+    else if(init && hash_str != hash) return false;
+    else if(!init) hash = hash_str;
 
-    }
+    hash_file.open(location, std::fstream::trunc | std::fstream::out);
 
+    hash_file << salt << "\n" << std::string(hash_str.length(), '0');
+
+    hash_file.close();
 
     chmod(location.c_str(), S_IRUSR|S_IWUSR);
 
     return true;
 }
 
-int run_checkin(){
+bool write_timestamp(std::string& location){
+    std::ofstream timestamp_file(location);
+    std::stringstream ss;
 
+    if(!timestamp_file.is_open()){
+        csyslog(LOG_ERR, "could not open timestamp_file \"" + location + "\"");
+        return false;
+    }
+
+    auto time_now = std::chrono::system_clock::now();
+    auto next_check = time_now + std::chrono::hours(config.checkin_interval_hours) + std::chrono::minutes(config.checkin_interval_minutes);
+    std::time_t time_now_t = std::chrono::system_clock::to_time_t(time_now);
+    std::time_t next_check_t = std::chrono::system_clock::to_time_t(next_check);
+
+    ss << std::put_time(std::localtime(&time_now_t), "%Y-%m-%d %H:%M:%S") << "\n" << std::put_time(std::localtime(&next_check_t), "%Y-%m-%d %H:%M:%S");
+
+    timestamp_file << ss.str();
+
+    timestamp_file.close();
+
+    return true;
+
+}
+
+bool got_valid_hash(){
+    if(hash == "" || hash == "\n" || hash == " ") return false;
+}
+
+int run_checkin(){
     if(!pwdhash_exists(config.pwdhash_path)){
         csyslog(LOG_INFO, "pwdhash not found waiting until created");
         wait_until_exists(config.pwdhash_path);
@@ -92,6 +129,21 @@ int run_checkin(){
         csyslog(LOG_ERR, "checkin module couldn't read hash or clear it");
         thread_crashed();
         return 1;
+    }
+    if(!got_valid_hash()){
+
+    }
+
+    write_timestamp(config.checkin_timestamp_path);
+    // Busy wait for next check
+    while(true){
+        usleep(config.checkin_interval_hours * 36e8 + config.checkin_interval_minutes * 6e7);
+        csyslog(LOG_INFO, "checking pwdhash...");
+        if(!read_clear_hashfile(config.pwdhash_path, true)){
+            trigger_switch("checkin");
+        }
+        write_timestamp(config.checkin_timestamp_path);
+        csyslog(LOG_INFO, "user is authorised");
     }
 
     return 0;
