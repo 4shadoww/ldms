@@ -8,9 +8,9 @@ SRCDIR=src
 COMMON=$(SRCDIR)/config_loader.cpp $(SRCDIR)/globals.cpp $(SRCDIR)/logging.cpp
 MODULES=$(SRCDIR)/modules/usb_events.cpp $(SRCDIR)/modules/lm_sensors.cpp $(SRCDIR)/modules/network.cpp $(SRCDIR)/modules/checkin.cpp
 LDMS_SRC=$(SRCDIR)/ldmsd.cpp  $(COMMON) $(MODULES)
-SWITCH_SRC=$(SRCDIR)/ldms.cpp $(COMMON)
+SWITCH_SRC=$(SRCDIR)/ldms.cpp $(COMMON) $(SRCDIR)/hash_utils.cpp
 IDIR=include
-LIBS=-I$(IDIR) -pthread -lsensors
+LIBS=-I$(IDIR) -pthread -lsensors -lcrypt
 
 CFLAGS=-Wall
 LDMS_FLAGS=-DLDMS_DAEMON
