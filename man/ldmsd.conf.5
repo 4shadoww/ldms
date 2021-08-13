@@ -112,6 +112,36 @@ Trigger if new network interface is found.
 List of network interfaces to monitor. For example, this list could have \fBeth0\fR.
 If this option is not defined, every interface will be monitored by default.
 
+.PP
+.B CHECKIN OPTIONS
+.TP
+.B checkin_interval_hours =
+.B Default:
+.I 24
+
+Checkin module interval in hours.
+
+.TP
+.B checkin_interval_minutes =
+.B Default:
+.I 0
+
+Checkin module interval in minutes.
+
+.TP
+.B pwdhash_path =
+.B Default:
+.I /var/lib/ldms/pwdhash
+
+Path to password salt and hash.
+
+.TP
+.B checkin_timestamp_path =
+.B Default:
+.I /var/lib/ldms/pwdtimestamp
+
+Path to checkin module timestamps.
+
 .SH SEE ALSO
 .BR ldms(1)
 .BR ldmsd(1)

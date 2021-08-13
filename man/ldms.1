@@ -1,4 +1,4 @@
-.TH LDMS 1 "2021-05-02" "1.0"
+.TH LDMS 1 "2021-08-13" "1.1"
 .SH NAME
 ldms – anti-forensics dead man's switch
 
@@ -45,6 +45,12 @@ example daemon's configuration file
 .TP
 .I /var/lib/ldms/switch.lck
 daemon's lock file
+.TP
+.I /var/lib/ldms/pwdhash
+checkin module's default hash location
+.TP
+.I /var/lib/ldms/pwdtimestamp
+checkin module's default timestamp location
 
 .SH SEE ALSO
 .BR ldmsd(1)
