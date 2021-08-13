@@ -190,7 +190,16 @@ bool auth_hash(std::string& location){
         salt = generate_salt(16);
     }
 
-    std::string pwd = getpass("password: ", false);
+    std::string pwd;
+    std::string pwd_again;
+
+    while(true){
+        pwd = getpass("password: ", false);
+        pwd_again = getpass("password again:", false);
+        if(pwd == pwd_again) break;
+        std::cout << "passwords doesn't match" << std::endl;
+    }
+
 
     hash = crypt(salt.c_str(), pwd.c_str());
 
