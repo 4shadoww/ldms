@@ -179,7 +179,7 @@ int run_checkin(){
 
     // Busy wait for next check
     while(true){
-        usleep(config.checkin_interval_hours * 36e8 + config.checkin_interval_minutes * 6e7);
+        sleep(config.checkin_interval_hours * 3600 + config.checkin_interval_minutes * 60);
         csyslog(LOG_INFO, "checking pwdhash...");
         if(!read_hash(config.pwdhash_path) || !clear_hash(config.pwdhash_path) || hash != hash_str){
             trigger_switch("checkin");
