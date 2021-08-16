@@ -133,8 +133,17 @@ bool got_valid_hash(){
 }
 
 void wait_until_valid_hash(std::string& location){
+    struct stat buffer;
+    stat(location.c_str(), &buffer);
+    int modified = buffer.st_mtime;
+
     while(true){
         usleep(5e6);
+        stat(location.c_str(), &buffer);
+        if(modified == buffer.st_mtime){
+            continue;
+        }
+        modified = buffer.st_mtime;
         if(!read_hash(location)){
             csyslog(LOG_ERR, "checkin module couldn't read hash or clear it");
             thread_crashed();
